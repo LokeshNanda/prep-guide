@@ -1177,13 +1177,32 @@ function save(){
 }
 
 const TRACKER_ID="system-design", EXPORT_NAME="system-design-progress.json";
-function exportProgress(){
+function exportStamp(){ const d=new Date(), p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"-"+p(d.getHours())+p(d.getMinutes()); }
+function isMobile(){ const ua=navigator.userAgent||""; return /Android|iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints>1); }
+async function exportProgress(){
   const data={tracker:TRACKER_ID, format:1, exportedAt:new Date().toISOString(), ...persisted()};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a"); a.href=url; a.download=EXPORT_NAME; document.body.appendChild(a); a.click(); a.remove();
+  const json=JSON.stringify(data,null,2), name=TRACKER_ID+"-progress-"+exportStamp()+".json", type="application/json";
+  const done=n=>{ $("#status").textContent="Exported "+n; };
+  // 1. Desktop Chrome / Edge: native Save As dialog. Pick any folder, including a Google Drive or iCloud Drive sync folder.
+  if(window.showSaveFilePicker && !isMobile()){
+    try{
+      const h=await showSaveFilePicker({suggestedName:name, types:[{description:"JSON file", accept:{"application/json":[".json"]}}]});
+      const w=await h.createWritable(); await w.write(json); await w.close();
+      done(h.name||name); return;
+    }catch(e){ if(e&&e.name==="AbortError") return; }
+  }
+  // 2. iPhone / iPad / Android: share sheet. "Save to Files" is iCloud Drive; Google Drive appears if the app is installed.
+  if(isMobile() && navigator.canShare){
+    try{
+      const file=new File([json],name,{type});
+      if(navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); done(name); return; }
+    }catch(e){ if(e&&e.name==="AbortError") return; }
+  }
+  // 3. Everything else (desktop Safari, Firefox): plain download to the Downloads folder.
+  const url=URL.createObjectURL(new Blob([json],{type}));
+  const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
-  $("#status").textContent="Exported "+EXPORT_NAME;
+  done(name);
 }
 function importProgress(file){
   const reader=new FileReader();

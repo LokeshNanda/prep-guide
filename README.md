@@ -19,9 +19,20 @@ today's lesson, and a day card where you mark the session done, unaided, or to r
 leave a note. Set the start date once in each tracker.
 
 Progress is saved in the browser's local storage, per tracker. To move it to another device or
-browser, press **Export** in a tracker to download a JSON file, then open the same tracker on the
-other device and press **Import**. Import replaces that browser's progress with the file's, after a
-confirmation. Works in Chrome, Safari, Firefox and Edge.
+browser, press **Export** in a tracker, then open the same tracker on the other device and press
+**Import**. Import replaces that browser's progress with the file's, after a confirmation.
+
+Export files are named `<tracker>-progress-<date>-<time>.json`, so several exports can sit in one
+folder. Where the file goes depends on the platform:
+
+- **Chrome or Edge on a computer:** a Save As dialog; pick any folder, including a Google Drive or
+  iCloud Drive folder synced to that computer.
+- **iPhone, iPad or Android:** the share sheet; choose "Save to Files" for iCloud Drive, or the
+  Google Drive app if it is installed.
+- **Safari or Firefox on a computer:** the file lands in Downloads; move it wherever you like.
+
+Import opens the normal file picker on every platform, which on iPhone and iPad includes iCloud
+Drive and Google Drive.
 
 ## Running locally
 

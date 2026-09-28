@@ -44,9 +44,13 @@ transient fields (`view`, `open`, and in SQL `hint`/`sol`) before saving.
 
 - `save()` writes the tracker's state to `localStorage` only (debounced). There is no server and
   no artifact runtime; the page must never reference `window.claude`.
-- **Export** builds `{tracker, format:1, exportedAt, ...persisted()}` and downloads it as
-  `<name>-progress.json` through a Blob URL. This works in Chrome, Safari (desktop and iOS),
-  Firefox and Edge, on Pages and on `file://`.
+- **Export** builds `{tracker, format:1, exportedAt, ...persisted()}` and saves it as
+  `<tracker>-progress-YYYY-MM-DD-HHMM.json` (local time). Destination is chosen by the platform:
+  desktop Chrome/Edge get a native Save As dialog (`showSaveFilePicker`, any folder including a
+  Google Drive or iCloud Drive sync folder); iPhone/iPad/Android get the share sheet
+  (`navigator.share` with a file: "Save to Files" is iCloud Drive, the Drive app if installed);
+  everything else gets a plain Blob download. User cancel (`AbortError`) is silent; other errors
+  fall through to the next method. Direct cloud APIs are out of scope (they need OAuth apps).
 - **Import** opens a file picker, parses the JSON, checks it has a `days` object and that
   `tracker` matches this page, shows a confirm with done counts and export date, then
   **replaces** the saved state (no merge: days carry no timestamps, so merging could resurrect
