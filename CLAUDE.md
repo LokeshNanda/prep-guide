@@ -70,7 +70,10 @@ transient fields (`view`, `open`, and in SQL `hint`/`sol`) before saving.
   `sw.js` (root scope) only when served over http(s); `file://` skips it.
 - `sw.js` precaches the `SHELL` list on install. **When you add a tracker, add it to `SHELL`** and
   to the manifest `shortcuts`. Same-origin requests are network-first, so a push reaches users on
-  their next online load without bumping `CACHE`; bump it only to purge stale entries.
+  their next online load without bumping `CACHE`; bump it only to purge stale entries. Same-origin
+  fetches pass `cache: "no-cache"` (and the precache uses `cache: "reload"`) because GitHub Pages
+  serves `Cache-Control: max-age=600`, and a plain `fetch()` inside the worker would otherwise return
+  the browser's HTTP-cached copy for up to 10 minutes after a deploy.
 - Icons: edit `icons/icon.svg`, then re-render the PNGs (512, 192, 180 for Apple, and a 512
   maskable with the artwork inside the central 80%). A headless-browser screenshot of the SVG works.
 - The index shows an "Install app" button when the browser fires `beforeinstallprompt` (Chrome,
