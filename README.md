@@ -10,6 +10,7 @@ Live: https://lokeshnanda.com/prep-guide/
 | SQL Pattern Tracker | `trackers/sql.html` | 16 weeks, 96 questions on a seeded in-browser database |
 | PySpark Depth Tracker | `trackers/pyspark.html` | 20 weeks, 120 exercises |
 | System Design Tracker | `trackers/system-design.html` | 20 weeks, 120 sessions |
+| Kafka Depth Tracker | `trackers/kafka.html` | 16 weeks, 96 labs and drills |
 
 ## Using it
 

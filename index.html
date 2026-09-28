@@ -15,6 +15,7 @@
   --sql:#2451D9; --sql-soft:#E3E9FB;
   --spark:#C2410C; --spark-soft:#FBE9DE;
   --sd:#0E7C6B; --sd-soft:#DDF1EC;
+  --kafka:#0E7C74; --kafka-soft:#DCF1EE;
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
@@ -24,6 +25,7 @@
   --sql:#7C9BFF; --sql-soft:#22305A;
   --spark:#F59A6E; --spark-soft:#43271A;
   --sd:#4FC3AE; --sd-soft:#173A34;
+  --kafka:#5FD3C8; --kafka-soft:#173835;
 }}
 :root[data-theme="dark"]{
   --bg:#141922; --panel:#1C2330; --ink:#EEF1F5; --ink2:#9AA5B5; --line:#2C3542;
@@ -32,6 +34,7 @@
   --sql:#7C9BFF; --sql-soft:#22305A;
   --spark:#F59A6E; --spark-soft:#43271A;
   --sd:#4FC3AE; --sd-soft:#173A34;
+  --kafka:#5FD3C8; --kafka-soft:#173835;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5}
@@ -58,7 +61,7 @@ footer a{color:inherit}
 <div class="wrap">
 <header>
   <h1>Prep Guide</h1>
-  <p class="sub">Four daily trackers. Progress is saved in this browser. Pick one and do today's session.</p>
+  <p class="sub">Five daily trackers. Progress is saved in this browser. Pick one and do today's session.</p>
 </header>
 
 <main class="grid">
@@ -88,6 +91,12 @@ footer a{color:inherit}
     <h2>System Design Tracker</h2>
     <p>20 weeks, 120 sessions. Foundations, HLD building blocks, LLD and patterns, classic HLD problems, timed mocks.</p>
     <div class="meta"><b class="done">–</b><span>/ 120 done</span><div class="bar"><span></span></div></div>
+  </a>
+  <a class="card" href="trackers/kafka.html" style="--c:var(--kafka);--c-soft:var(--kafka-soft)" data-key="kafka-tracker" data-total="96">
+    <span class="tag">Kafka</span>
+    <h2>Kafka Depth Tracker</h2>
+    <p>16 weeks: the log model, operating a cluster, production incidents, then the ecosystem and design. Do the lab or drill, log symptom, cause, fix.</p>
+    <div class="meta"><b class="done">–</b><span>/ 96 done</span><div class="bar"><span></span></div></div>
   </a>
 </main>
 

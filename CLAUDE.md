@@ -12,6 +12,7 @@ trackers/dsa.html           DSA Pattern Tracker        20 weeks x 6 days = 120  
 trackers/sql.html           SQL Pattern Tracker        16 weeks x 6 days = 96    localStorage key "sql-tracker"
 trackers/pyspark.html       PySpark Depth Tracker      20 weeks x 6 days = 120   localStorage key "pyspark-tracker"
 trackers/system-design.html System Design Tracker      20 weeks x 6 days = 120   localStorage key "sd-tracker"
+trackers/kafka.html         Kafka Depth Tracker        16 weeks x 6 days = 96    localStorage key "kafka-tracker"
 ```
 
 ## Hard rules
