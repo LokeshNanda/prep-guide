@@ -146,7 +146,7 @@ label.small{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
     <span class="status" id="status">Saved in this browser</span>
     <button class="btn" id="exportBtn" title="Download your progress as a JSON file">Export</button>
     <button class="btn" id="importBtn" title="Load progress from an exported JSON file">Import</button>
-    <input type="file" id="importFile" accept="application/json,.json" hidden>
+    <input type="file" id="importFile" accept=".json,.txt,application/json,text/plain" hidden>
   </div>
 </header>
 
@@ -308,10 +308,11 @@ async function exportProgress(){
     }catch(e){ if(e&&e.name==="AbortError") return; }
   }
   // 2. iPhone / iPad / Android: share sheet. "Save to Files" is iCloud Drive; Google Drive appears if the app is installed.
+  //    Chrome only shares files from a fixed allowlist that has .txt but not .json, so the shared copy is named .txt.
   if(isMobile() && navigator.canShare){
     try{
-      const file=new File([json],name,{type});
-      if(navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); done(name); return; }
+      const txtName=name.replace(/\.json$/,".txt"), file=new File([json],txtName,{type:"text/plain"});
+      if(navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:txtName}); done(txtName); return; }
     }catch(e){ if(e&&e.name==="AbortError") return; }
   }
   // 3. Everything else (desktop Safari, Firefox): plain download to the Downloads folder.

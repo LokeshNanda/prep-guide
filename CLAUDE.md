@@ -54,7 +54,10 @@ transient fields (`view`, `open`, and in SQL `hint`/`sol`) before saving.
   (`navigator.share` with a file: "Save to Files" is iCloud Drive, the Drive app if installed);
   everything else gets a plain Blob download. User cancel (`AbortError`) is silent; other errors
   fall through to the next method. Direct cloud APIs are out of scope (they need OAuth apps).
-- **Import** opens a file picker, parses the JSON, checks it has a `days` object and that
+  **The shared file is named `.txt` with type `text/plain`**: Chromium's Web Share allowlist
+  (`kPermitted` in `share_service_impl.cc`) includes `.txt` but not `.json`, and `canShare` returns
+  false for disallowed types, which silently drops to the download path.
+- **Import** opens a file picker (accepts `.json` and `.txt`), parses the JSON, checks it has a `days` object and that
   `tracker` matches this page, shows a confirm with done counts and export date, then
   **replaces** the saved state (no merge: days carry no timestamps, so merging could resurrect
   stale entries). Files without a `tracker` field are accepted.

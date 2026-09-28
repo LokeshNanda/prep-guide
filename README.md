@@ -28,7 +28,8 @@ folder. Where the file goes depends on the platform:
 - **Chrome or Edge on a computer:** a Save As dialog; pick any folder, including a Google Drive or
   iCloud Drive folder synced to that computer.
 - **iPhone, iPad or Android:** the share sheet; choose "Save to Files" for iCloud Drive, or the
-  Google Drive app if it is installed.
+  Google Drive app if it is installed. The shared file is named `.txt` because phones will not
+  share `.json` files; Import accepts both.
 - **Safari or Firefox on a computer:** the file lands in Downloads; move it wherever you like.
 
 Import opens the normal file picker on every platform, which on iPhone and iPad includes iCloud
