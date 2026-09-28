@@ -59,6 +59,29 @@ transient fields (`view`, `open`, and in SQL `hint`/`sol`) before saving.
 - Every tracker has `<nav class="topnav">` with a home link and links to the other four;
   `aria-current="page"` marks the current one. **Add a new tracker to this nav in all files.**
 
+## Schedule status and the home Today strip
+
+- `sched()` compares `counts().done` with sessions scheduled by the start date: `due` is sessions
+  before today, `expected` is through today. States: `before`, `on`, `ahead`, `behind`,
+  `complete`. Today's own session never counts as missed. `schedEl()` renders the line at the top
+  of the day card; on `behind` it offers **Shift start date**, which moves the start forward by the
+  smallest number of days that makes `due <= done` (after a confirm). Progress keys never move.
+- `renderJump()` also writes `<storage key>:today` to localStorage: `{state, w, d, title, done,
+  behind, date}` (or `{state:"before", start}`). `index.html` reads those five keys to build the
+  Today strip; a tracker that has never been opened in that browser shows "Open once…". These
+  keys are not part of export/import (`persisted()` ignores them).
+- Links from the strip use `#today`; a tracker with that hash switches to the current week and
+  scrolls to today's row on load.
+
+## Colour tokens
+
+- Light mode `--done` is `#1A7F50` and `--warn` `#AD5412` (both >= 4.5:1 on white for 13px text).
+  Dark values are unchanged. PySpark keeps its purple `--warn`.
+- SQL's accent is purple (`#7A3FBF` / soft `#EFE4FA`, dark `#C39BFF` / `#33234F`) in the tracker,
+  its `theme-color`, and the `--sql` tokens on the home page. DSA stays blue.
+- `--dotline` is the hairline on empty matrix dots (`#8F98A6` light, `#66727F` dark); done and
+  revisit dots clear it.
+
 ## Saving, export and import
 
 - `save()` writes the tracker's state to `localStorage` only (debounced). There is no server and

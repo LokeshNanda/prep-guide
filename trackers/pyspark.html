@@ -17,19 +17,19 @@
 <style>
 :root{
   --bg:#F3F4F6; --panel:#FFFFFF; --ink:#1A1F2B; --ink2:#5C6573; --line:#DBE0E7;
-  --acc:#C2410C; --acc-soft:#FBE9DE; --done:#1E8F5A; --done-soft:#DDF3E8; --warn:#6D4AD6; --warn-soft:#ECE6FB;
-  --bug:#B42318; --bug-soft:#FCE8E6; --dot:#D3D8E0; --radius:10px;
+  --acc:#C2410C; --acc-soft:#FBE9DE; --done:#1A7F50; --done-soft:#DDF3E8; --warn:#6D4AD6; --warn-soft:#ECE6FB;
+  --bug:#B42318; --bug-soft:#FCE8E6; --dot:#D3D8E0; --dotline:#8F98A6; --radius:10px;
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#131720; --panel:#1B212D; --ink:#EEF1F5; --ink2:#98A3B3; --line:#2B3442;
   --acc:#F59A6E; --acc-soft:#43271A; --done:#4BC98C; --done-soft:#173A2B; --warn:#B39DFF; --warn-soft:#2C2450;
-  --bug:#FF8A80; --bug-soft:#3E1F1C; --dot:#2E3846;
+  --bug:#FF8A80; --bug-soft:#3E1F1C; --dot:#2E3846; --dotline:#66727F;
 }}
 :root[data-theme="dark"]{
   --bg:#131720; --panel:#1B212D; --ink:#EEF1F5; --ink2:#98A3B3; --line:#2B3442;
   --acc:#F59A6E; --acc-soft:#43271A; --done:#4BC98C; --done-soft:#173A2B; --warn:#B39DFF; --warn-soft:#2C2450;
-  --bug:#FF8A80; --bug-soft:#3E1F1C; --dot:#2E3846;
+  --bug:#FF8A80; --bug-soft:#3E1F1C; --dot:#2E3846; --dotline:#66727F;
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
@@ -52,7 +52,7 @@ h1{font-size:26px;font-weight:700;margin:0;letter-spacing:-.01em}
 .mgrid .lbl{font-size:12px;color:var(--ink2)}
 .mgrid .wk{font-size:12px;color:var(--ink2);text-align:center;cursor:pointer;padding:2px 0;border-radius:6px;border:none;background:none}
 .mgrid .wk.cur{color:var(--acc);font-weight:600;background:var(--acc-soft)}
-.dot{width:100%;aspect-ratio:1;border-radius:50%;background:var(--dot);border:none;cursor:pointer;padding:0;position:relative}
+.dot{width:100%;aspect-ratio:1;border-radius:50%;background:var(--dot);border:1px solid var(--dotline);cursor:pointer;padding:0;position:relative}
 .dot.done{background:var(--done)}
 .dot.unaided::after{content:"";position:absolute;inset:32%;border-radius:50%;background:var(--panel)}
 .dot.today{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--acc)}
@@ -171,6 +171,14 @@ label.small{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
   .matrix{-webkit-mask-image:linear-gradient(to right,transparent,#000 16px,#000 calc(100% - 16px),transparent);mask-image:linear-gradient(to right,transparent,#000 16px,#000 calc(100% - 16px),transparent)}
   .jump{display:flex}
 }
+
+/* Schedule status */
+.sched{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin:0 0 14px;padding:9px 12px;border-radius:8px;background:var(--bg)}
+.sched b{font-weight:600;color:var(--ink)}
+.sched.on b{color:var(--done)} .sched.ahead b{color:var(--done)}
+.sched.behind{background:var(--warn-soft)} .sched.behind b{color:var(--warn)}
+.sched .btn{margin-left:auto;padding:5px 11px;font-size:12.5px}
+.dot.done,.dot.revisit{border-color:transparent}
 </style>
 </head>
 <body>
@@ -291,7 +299,7 @@ function renderWeek(){
   $("#prevW").onclick=()=>{state.view=w-1;render();};
   $("#nextW").onclick=()=>{state.view=w+1;render();};
 
-  const c=$("#dcard"); c.innerHTML="";
+  const c=$("#dcard"); c.innerHTML=""; c.appendChild(schedEl());
   wk.p.forEach((name,d)=>{
     const r=rec(w,d);
     const row=el("div","day"+(r.done?" done":"")+(r.open?" open":"")); row.id="day"+d;
@@ -330,14 +338,52 @@ function scrollMatrixToWeek(w){
   const left=col.offsetLeft-52-6, right=col.offsetLeft+col.offsetWidth+6;
   if(left<m.scrollLeft || right>m.scrollLeft+m.clientWidth) m.scrollLeft=Math.max(0,left-(m.clientWidth-52)/2);
 }
+function expectedAt(diff){
+  const N=PLAN.length, total=N*6;
+  if(diff<0) return 0;
+  if(diff>=N*7) return total;
+  return Math.min(total, Math.floor(diff/7)*6 + Math.min(diff%7+1, 6));
+}
+function sched(){
+  const N=PLAN.length, total=N*6;
+  const s=new Date(state.start+"T00:00:00"), n=new Date(); n.setHours(0,0,0,0);
+  const diff=Math.floor((n-s)/864e5), done=counts().done;
+  if(diff<0) return {state:"before",diff,done,total,expected:0,behind:0};
+  // due = sessions scheduled before today (today's own session is not "missed" until the day ends)
+  const due=expectedAt(diff-1), expected=expectedAt(diff);
+  const behind=Math.max(0,due-done), ahead=Math.max(0,done-expected);
+  return {state:done>=total?"complete":(behind>0?"behind":(ahead>0?"ahead":"on")),diff,done,total,expected,due,behind:behind||-ahead};
+}
+function fmtDate(d){ return d.toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
+function schedEl(){
+  const x=sched(); const p=document.createElement("p"); p.className="sched "+x.state;
+  const days=Math.abs(x.behind), lbl=days===1?"day":"days";
+  if(x.state==="before") p.innerHTML=`<b>Starts ${fmtDate(new Date(state.start+"T00:00:00"))}</b><span>${x.total} sessions ahead</span>`;
+  else if(x.state==="complete") p.innerHTML=`<b>Plan complete</b><span>${x.total} of ${x.total} done</span>`;
+  else if(x.state==="on") p.innerHTML=`<b>On track</b><span>${x.done} of ${x.expected} sessions through today</span>`;
+  else if(x.state==="ahead") p.innerHTML=`<b>${days} ${lbl} ahead</b><span>${x.done} done, ${x.expected} scheduled through today</span>`;
+  else { p.innerHTML=`<b>${days} ${lbl} behind</b><span>${x.done} of ${x.expected} sessions through today</span><button class="btn" id="shiftBtn" type="button">Shift start date</button>`; p.querySelector("#shiftBtn").onclick=shiftStart; }
+  return p;
+}
+function shiftStart(){
+  const x=sched(); if(x.state!=="behind") return;
+  let k=1; while(k<=x.diff && expectedAt(x.diff-k-1)>x.done) k++;
+  const s=new Date(state.start+"T00:00:00"); s.setDate(s.getDate()+k);
+  const iso=s.getFullYear()+"-"+String(s.getMonth()+1).padStart(2,"0")+"-"+String(s.getDate()).padStart(2,"0");
+  if(!confirm(`Move the start date ${k} ${k===1?"day":"days"} later, to ${fmtDate(s)}, so the schedule matches your pace? Completed sessions keep their week and day.`)) return;
+  state.start=iso; state.view=currentWeek().w; save(); render();
+}
+function dayTitle(w,d){ const raw=PLAN[w]&&PLAN[w].p[d]; return String(Array.isArray(raw)?raw[1]:(raw&&typeof raw==="object"?(raw.t||raw.name||""):(raw||""))).replace("*",""); }
+function writeToday(summary){ try{ localStorage.setItem(STORE_KEY+":today", JSON.stringify({...summary, date:new Date().toISOString().slice(0,10)})); }catch(e){} }
+
 function renderJump(){
   const j=document.getElementById("jump"), t=document.getElementById("jumpText"); if(!j) return;
-  const cur=currentWeek(); const wk=PLAN[cur.w];
-  if(cur.d<0 || !wk || !wk.p[cur.d]){ j.hidden=true; return; }
-  const raw=wk.p[cur.d]; const name=String(Array.isArray(raw)?raw[1]:(raw&&typeof raw==="object"?(raw.t||raw.name||""):raw)).replace("*","");
-  const r=rec(cur.w,cur.d);
+  const cur=currentWeek(); const wk=PLAN[cur.w]; const x=sched();
+  if(cur.d<0 || !wk || !wk.p[cur.d]){ j.hidden=true; writeToday({state:x.state, start:state.start}); return; }
+  const name=dayTitle(cur.w,cur.d); const r=rec(cur.w,cur.d);
   t.textContent=(r.done?"\u2713 ":"")+"W"+(cur.w+1)+" \u00b7 Day "+(cur.d+1)+" \u00b7 "+name;
   j.hidden=false;
+  writeToday({state:x.state, w:cur.w, d:cur.d, title:name, done:!!r.done, behind:Math.max(0,x.behind)});
   document.getElementById("jumpBtn").onclick=()=>{ if(state.view!==cur.w){ state.view=cur.w; render(); } document.getElementById("day"+cur.d)?.scrollIntoView({behavior:"smooth",block:"start"}); };
 }
 
@@ -354,6 +400,7 @@ function save(){
   },500);
 }
 
+const STORE_KEY="pyspark-tracker";
 const TRACKER_ID="pyspark", EXPORT_NAME="pyspark-progress.json";
 function exportStamp(){ const d=new Date(), p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"-"+p(d.getHours())+p(d.getMinutes()); }
 function isMobile(){ const ua=navigator.userAgent||""; return /Android|iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints>1); }
@@ -416,6 +463,7 @@ function init(){
   $("#startDate").onchange=e=>{ state.start=e.target.value; state.view=currentWeek().w; save(); render(); };
 
   wireTransfer();
+  if(location.hash==="#today"){ const cur=currentWeek(); if(cur.d>=0){ state.view=cur.w; render(); setTimeout(()=>document.getElementById("day"+cur.d)?.scrollIntoView({block:"start"}),60); } }
 }
 init();
 </script>

@@ -16,7 +16,9 @@ Live: https://lokeshnanda.com/prep-guide/
 
 Open `index.html` (or the live URL) and pick a tracker. Each one shows a week-by-day matrix,
 today's lesson, and a day card where you mark the session done, unaided, or to revisit and
-leave a note. Set the start date once in each tracker.
+leave a note. Set the start date once in each tracker. The day card tells you whether you are on
+track or behind, and offers to shift the start date to match your pace. The home page lists
+today's session for every tracker you have opened in that browser.
 
 Progress is saved in the browser's local storage, per tracker. To move it to another device or
 browser, press **Export** in a tracker, then open the same tracker on the other device and press

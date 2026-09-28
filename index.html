@@ -18,9 +18,9 @@
 <style>
 :root{
   --bg:#F2F4F7; --panel:#FFFFFF; --ink:#18212E; --ink2:#5B6675; --line:#DCE1E8;
-  --done:#1E8F5A; --done-soft:#DDF3E8; --dot:#D4D9E1; --radius:12px;
+  --done:#1A7F50; --done-soft:#DDF3E8; --dot:#D4D9E1; --radius:12px;
   --dsa:#2451D9; --dsa-soft:#E3E9FB;
-  --sql:#2451D9; --sql-soft:#E3E9FB;
+  --sql:#7A3FBF; --sql-soft:#EFE4FA;
   --spark:#C2410C; --spark-soft:#FBE9DE;
   --sd:#0E7C6B; --sd-soft:#DDF1EC;
   --kafka:#0E7C74; --kafka-soft:#DCF1EE;
@@ -30,7 +30,7 @@
   --bg:#141922; --panel:#1C2330; --ink:#EEF1F5; --ink2:#9AA5B5; --line:#2C3542;
   --done:#4BC98C; --done-soft:#173A2B; --dot:#2F3947;
   --dsa:#7C9BFF; --dsa-soft:#22305A;
-  --sql:#7C9BFF; --sql-soft:#22305A;
+  --sql:#C39BFF; --sql-soft:#33234F;
   --spark:#F59A6E; --spark-soft:#43271A;
   --sd:#4FC3AE; --sd-soft:#173A34;
   --kafka:#5FD3C8; --kafka-soft:#173835;
@@ -39,7 +39,7 @@
   --bg:#141922; --panel:#1C2330; --ink:#EEF1F5; --ink2:#9AA5B5; --line:#2C3542;
   --done:#4BC98C; --done-soft:#173A2B; --dot:#2F3947;
   --dsa:#7C9BFF; --dsa-soft:#22305A;
-  --sql:#7C9BFF; --sql-soft:#22305A;
+  --sql:#C39BFF; --sql-soft:#33234F;
   --spark:#F59A6E; --spark-soft:#43271A;
   --sd:#4FC3AE; --sd-soft:#173A34;
   --kafka:#5FD3C8; --kafka-soft:#173835;
@@ -62,6 +62,22 @@ h2{font-size:18px;margin:0}
 .meta b{color:var(--ink);font-weight:600}
 .bar{flex:1;height:6px;background:var(--dot);border-radius:3px;overflow:hidden}
 .bar span{display:block;height:100%;width:0;background:var(--done);border-radius:3px;transition:width .3s}
+.today{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px 8px;margin-bottom:18px}
+.thead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px}
+.thead h2{font-size:15px;margin:0;font-weight:600}
+.thead span{font-size:13px;color:var(--ink2)}
+.trow{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);color:inherit;text-decoration:none;min-height:44px}
+.trow:first-of-type{border-top:none}
+.trow .tag{flex:none}
+.trow .ttl{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow .ttl.muted{color:var(--ink2)}
+.trow .tst{flex:none;font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--dot);color:var(--ink2)}
+.trow .tst.done{background:var(--done-soft);color:var(--done)}
+.trow .tst.behind{background:#FCEBDD;color:#AD5412}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .trow .tst.behind{background:#3F2A14;color:#F0A05C} }
+:root[data-theme="dark"] .trow .tst.behind{background:#3F2A14;color:#F0A05C}
+.trow:hover .ttl,.trow:focus-visible .ttl{color:var(--c)}
+.trow:focus-visible{outline:2px solid var(--c);outline-offset:2px;border-radius:8px}
 footer{margin-top:32px;color:var(--ink2);font-size:13px}
 footer a{color:inherit}
 </style>
@@ -75,6 +91,11 @@ footer a{color:inherit}
   </div>
   <button class="btn" id="installBtn" hidden>Install app</button>
 </header>
+
+<section class="today" id="today" aria-label="Today">
+  <div class="thead"><h2>Today</h2><span id="todayDate"></span></div>
+  <div id="todayRows"></div>
+</section>
 
 <main class="grid">
   <a class="card" href="trackers/dsa.html" style="--c:var(--dsa);--c-soft:var(--dsa-soft)" data-key="dsa-tracker" data-total="120">
@@ -124,6 +145,29 @@ addEventListener("appinstalled",()=>{ document.getElementById("installBtn").hidd
 const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
 const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
 if(isIOS&&!standalone) document.getElementById("iosHint").hidden=false;
+
+// Today strip: each tracker writes a small summary to localStorage when it renders.
+const TRACKERS=[
+  {key:"dsa-tracker",tag:"DSA",href:"trackers/dsa.html",c:"dsa"},
+  {key:"sql-tracker",tag:"SQL",href:"trackers/sql.html",c:"sql"},
+  {key:"pyspark-tracker",tag:"PySpark",href:"trackers/pyspark.html",c:"spark"},
+  {key:"sd-tracker",tag:"System Design",href:"trackers/system-design.html",c:"sd"},
+  {key:"kafka-tracker",tag:"Kafka",href:"trackers/kafka.html",c:"kafka"}
+];
+document.getElementById("todayDate").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
+const rows=document.getElementById("todayRows");
+TRACKERS.forEach(t=>{
+  let s=null; try{ s=JSON.parse(localStorage.getItem(t.key+":today")); }catch(e){}
+  const a=document.createElement("a"); a.className="trow"; a.href=t.href+"#today"; a.style.cssText=`--c:var(--${t.c});--c-soft:var(--${t.c}-soft)`;
+  let ttl="", cls="", st="", stCls="";
+  if(!s){ ttl="Open once to see today\u2019s session"; cls="muted"; }
+  else if(s.state==="before"){ ttl="Starts "+new Date(s.start+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"}); cls="muted"; }
+  else if(s.state==="complete"){ ttl="Plan complete"; st="\u2713 Done"; stCls="done"; }
+  else { ttl=`W${s.w+1} \u00b7 Day ${s.d+1} \u00b7 ${s.title}`; if(s.done){ st="\u2713 Done"; stCls="done"; } else if(s.behind>0){ st=s.behind+" behind"; stCls="behind"; } else { st="To do"; } }
+  a.innerHTML=`<span class="tag">${t.tag}</span><span class="ttl ${cls}"></span>${st?`<span class="tst ${stCls}">${st}</span>`:""}`;
+  a.querySelector(".ttl").textContent=ttl;
+  rows.appendChild(a);
+});
 
 // Read each tracker's saved state (same origin) and show a done count. Fails quietly.
 document.querySelectorAll("a.card[data-key]").forEach(card=>{
