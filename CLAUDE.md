@@ -40,12 +40,19 @@ Curriculum edits go in `PLAN` (and `LESSONS` where present). Each week is
 and hold `done`, `unaided`, `revisit`, `note`, plus per-tracker extras. `persisted()` strips
 transient fields (`view`, `open`, and in SQL `hint`/`sol`) before saving.
 
-## Runtime
+## Saving, export and import
 
-- `save()` always writes to `localStorage`. If the page is running inside a Claude artifact
-  (`window.claude` exists) it also syncs to the artifact db and enables Export JSON.
-  Always guard those calls with `window.claude ? ... : null` so the page works on Pages.
-- Status text: "Synced" (artifact db), "Offline (this browser only)" (Pages or file://).
+- `save()` writes the tracker's state to `localStorage` only (debounced). There is no server and
+  no artifact runtime; the page must never reference `window.claude`.
+- **Export** builds `{tracker, format:1, exportedAt, ...persisted()}` and downloads it as
+  `<name>-progress.json` through a Blob URL. This works in Chrome, Safari (desktop and iOS),
+  Firefox and Edge, on Pages and on `file://`.
+- **Import** opens a file picker, parses the JSON, checks it has a `days` object and that
+  `tracker` matches this page, shows a confirm with done counts and export date, then
+  **replaces** the saved state (no merge: days carry no timestamps, so merging could resurrect
+  stale entries). Files without a `tracker` field are accepted.
+- Status line: "Saved in this browser" by default, "Exported …" / "Imported …" after a transfer,
+  "Couldn't save in this browser" if `localStorage` throws (private mode, quota).
 
 ## Verifying a change
 
@@ -55,7 +62,8 @@ from the repo root and visit `/index.html`) and check:
 1. No console errors on load.
 2. Light and dark modes both render.
 3. Mark a day done, reload, and confirm it persisted.
-4. Narrow the window to ~375px and confirm no horizontal scroll.
+4. Export, clear local storage, import the file, and confirm the progress comes back.
+5. Narrow the window to ~375px and confirm no horizontal scroll.
 
 ## Commits
 

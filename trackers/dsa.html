@@ -124,8 +124,10 @@ label.small{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
     <p class="sub">4 weeks of foundations, then 16 patterns. Read the lesson, solve the day's problem, log the tell.</p>
   </div>
   <div class="tools">
-    <span class="status" id="status">Loading…</span>
-    <button class="btn" id="exportBtn" hidden>Export JSON</button>
+    <span class="status" id="status">Saved in this browser</span>
+    <button class="btn" id="exportBtn" title="Download your progress as a JSON file">Export</button>
+    <button class="btn" id="importBtn" title="Load progress from an exported JSON file">Import</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
   </div>
 </header>
 
@@ -200,7 +202,7 @@ function renderLesson(){
 const SLUGS = [["two-sum", "contains-duplicate", "reverse-string", "best-time-to-buy-and-sell-stock", "move-zeroes", "merge-sorted-array"], ["valid-anagram", "majority-element", "intersection-of-two-arrays-ii", "first-unique-character-in-a-string", "ransom-note", "isomorphic-strings"], ["fibonacci-number", "power-of-two", "reverse-string", "sort-an-array", "sort-colors", "powx-n"], ["implement-stack-using-queues", "implement-queue-using-stacks", "design-linked-list", "design-hashmap", "binary-tree-inorder-traversal", "number-of-islands"], ["two-sum-ii-input-array-is-sorted", "valid-palindrome", "remove-duplicates-from-sorted-array", "container-with-most-water", "3sum", "trapping-rain-water"], ["maximum-average-subarray-i", "longest-substring-without-repeating-characters", "minimum-size-subarray-sum", "longest-repeating-character-replacement", "permutation-in-string", "minimum-window-substring"], ["range-sum-query-immutable", "subarray-sum-equals-k", "contiguous-array", "product-of-array-except-self", "group-anagrams", "longest-consecutive-sequence"], ["binary-search", "first-bad-version", "search-in-rotated-sorted-array", "find-minimum-in-rotated-sorted-array", "koko-eating-bananas", "median-of-two-sorted-arrays"], ["valid-parentheses", "min-stack", "daily-temperatures", "next-greater-element-ii", "largest-rectangle-in-histogram", "evaluate-reverse-polish-notation"], ["reverse-linked-list", "middle-of-the-linked-list", "linked-list-cycle-ii", "merge-two-sorted-lists", "reorder-list", "remove-nth-node-from-end-of-list"], ["maximum-depth-of-binary-tree", "invert-binary-tree", "diameter-of-binary-tree", "balanced-binary-tree", "lowest-common-ancestor-of-a-binary-tree", "path-sum-ii"], ["binary-tree-level-order-traversal", "binary-tree-right-side-view", "validate-binary-search-tree", "kth-smallest-element-in-a-bst", "serialize-and-deserialize-binary-tree", "binary-tree-maximum-path-sum"], ["number-of-islands", "clone-graph", "max-area-of-island", "rotting-oranges", "pacific-atlantic-water-flow", "surrounded-regions"], ["course-schedule", "course-schedule-ii", "number-of-connected-components-in-an-undirected-graph", "redundant-connection", "graph-valid-tree", "accounts-merge"], ["subsets", "permutations", "combination-sum", "word-search", "palindrome-partitioning", "n-queens"], ["kth-largest-element-in-an-array", "top-k-frequent-elements", "k-closest-points-to-origin", "merge-intervals", "non-overlapping-intervals", "task-scheduler"], ["climbing-stairs", "house-robber", "coin-change", "longest-increasing-subsequence", "word-break", "decode-ways"], ["unique-paths", "longest-common-subsequence", "edit-distance", "partition-equal-subset-sum", "longest-palindromic-substring", "best-time-to-buy-and-sell-stock-with-cooldown"], ["network-delay-time", "cheapest-flights-within-k-stops", "min-cost-to-connect-all-points", "word-ladder", "alien-dictionary", "swim-in-rising-water"], [null, null, null, null, null, null]];
 function plink(w,d){ const s=SLUGS[w][d]; if(s) return 'https://leetcode.com/problems/'+s+'/'; return 'https://leetcode.com/problemset/?difficulty='+(d<3?'MEDIUM':'HARD'); }
 let state = {start:"2026-09-28", days:{}, templates:{}, view:null};
-let db=null, doc=null, dl=null, saveTimer=null, loaded=false;
+let saveTimer=null;
 const $=s=>document.querySelector(s);
 const key=(w,d)=>`w${w+1}d${d+1}`;
 const rec=(w,d)=>state.days[key(w,d)]||{};
@@ -279,37 +281,53 @@ function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 function persisted(){ const {view,...rest}=state; const days={}; for(const k in rest.days){ const {open,...r}=rest.days[k]; if(Object.keys(r).length) days[k]=r; } return {...rest,days,updatedAt:new Date().toISOString()}; }
 function save(){
   clearTimeout(saveTimer);
-  saveTimer=setTimeout(async()=>{
-    try{ localStorage.setItem("dsa-tracker",JSON.stringify(persisted())); }catch(e){}
-    if(!doc) return;
-    $("#status").textContent="Saving…";
-    try{ await doc.set(persisted()); $("#status").textContent="Saved"; }
-    catch(e){ $("#status").textContent="Couldn't save (" + (e?.code||"error") + ")"; }
+  saveTimer=setTimeout(()=>{
+    try{ localStorage.setItem("dsa-tracker",JSON.stringify(persisted())); }
+    catch(e){ $("#status").textContent="Couldn't save in this browser"; }
   },500);
 }
 
-async function init(){
+const TRACKER_ID="dsa", EXPORT_NAME="dsa-progress.json";
+function exportProgress(){
+  const data={tracker:TRACKER_ID, format:1, exportedAt:new Date().toISOString(), ...persisted()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=EXPORT_NAME; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  $("#status").textContent="Exported "+EXPORT_NAME;
+}
+function importProgress(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    let data;
+    try{ data=JSON.parse(reader.result); }catch(e){ alert("That file isn't valid JSON."); return; }
+    if(!data||typeof data!=="object"||!data.days||typeof data.days!=="object"){ alert("That file doesn't look like a tracker export."); return; }
+    if(data.tracker&&data.tracker!==TRACKER_ID){ alert("That file is from the "+data.tracker+" tracker, not this one."); return; }
+    const count=d=>Object.values(d||{}).filter(r=>r&&r.done).length;
+    const when=data.exportedAt||data.updatedAt, whenText=when?new Date(when).toLocaleString():"an unknown date";
+    if(!confirm("Replace this browser's progress ("+count(state.days)+" done) with the file's progress ("+count(data.days)+" done, exported "+whenText+")?")) return;
+    const {tracker,format,exportedAt,view,...rest}=data;
+    state={...state,...rest}; if(!state.days)state.days={}; if(!state.templates)state.templates={};
+    state.view=currentWeek().w; save(); render();
+    $("#status").textContent="Imported "+file.name;
+  };
+  reader.onerror=()=>alert("Couldn't read that file.");
+  reader.readAsText(file);
+}
+function wireTransfer(){
+  $("#exportBtn").onclick=exportProgress;
+  const inp=$("#importFile");
+  $("#importBtn").onclick=()=>{ inp.value=""; inp.click(); };
+  inp.onchange=()=>{ if(inp.files&&inp.files[0]) importProgress(inp.files[0]); };
+}
+
+function init(){
   try{ const l=localStorage.getItem("dsa-tracker"); if(l) state={...state,...JSON.parse(l)}; }catch(e){}
   const cw=currentWeek(); state.view=cw.w;
   render();
   $("#startDate").onchange=e=>{ state.start=e.target.value; state.view=currentWeek().w; save(); render(); };
 
-  db = window.claude ? await claude.use("db") : null;
-  if(db){
-    doc=db.doc("progress/main");
-    try{
-      const snap=await doc.get();
-      if(snap.exists){ const {view,...s}=snap.data(); state={...state,...s}; if(!state.days)state.days={}; if(!state.templates)state.templates={}; }
-      else await doc.set(persisted());
-      $("#status").textContent="Synced";
-    }catch(e){ $("#status").textContent="Offline (this browser only)"; doc=null; }
-  } else $("#status").textContent="Offline (this browser only)";
-  loaded=true; state.view=currentWeek().w; render();
-
-  dl = window.claude ? await claude.use("downloads") : null;
-  if(dl){ const b=$("#exportBtn"); b.hidden=false; b.onclick=async()=>{
-    try{ await dl.save({filename:"dsa-progress.json",data:JSON.stringify(persisted(),null,2)}); }catch(e){}
-  }; }
+  wireTransfer();
 }
 init();
 </script>

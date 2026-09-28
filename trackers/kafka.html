@@ -135,8 +135,10 @@ label.small{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
     <p class="sub">16 weeks: 4 on the log model, 4 on operating a cluster, 4 on production incidents, 4 on the ecosystem and design. Read the lesson, do the day's lab or drill, log the symptom → cause → fix.</p>
   </div>
   <div class="tools">
-    <span class="status" id="status">Loading…</span>
-    <button class="btn" id="exportBtn" hidden>Export JSON</button>
+    <span class="status" id="status">Saved in this browser</span>
+    <button class="btn" id="exportBtn" title="Download your progress as a JSON file">Export</button>
+    <button class="btn" id="importBtn" title="Load progress from an exported JSON file">Import</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
   </div>
 </header>
 
@@ -194,7 +196,7 @@ function renderLesson(){
 }
 
 let state = {start:"2026-09-28", days:{}, templates:{}, view:null};
-let db=null, doc=null, dl=null, saveTimer=null, loaded=false;
+let saveTimer=null;
 const $=s=>document.querySelector(s);
 const key=(w,d)=>`w${w+1}d${d+1}`;
 const rec=(w,d)=>state.days[key(w,d)]||{};
@@ -276,38 +278,54 @@ function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 function persisted(){ const {view,...rest}=state; const days={}; for(const k in rest.days){ const {open,...r}=rest.days[k]; if(Object.keys(r).length) days[k]=r; } return {...rest,days,updatedAt:new Date().toISOString()}; }
 function save(){
   clearTimeout(saveTimer);
-  saveTimer=setTimeout(async()=>{
-    try{ localStorage.setItem("kafka-tracker",JSON.stringify(persisted())); }catch(e){}
-    if(!doc) return;
-    $("#status").textContent="Saving…";
-    try{ await doc.set(persisted()); $("#status").textContent="Saved"; }
-    catch(e){ $("#status").textContent="Couldn't save (" + (e?.code||"error") + ")"; }
+  saveTimer=setTimeout(()=>{
+    try{ localStorage.setItem("kafka-tracker",JSON.stringify(persisted())); }
+    catch(e){ $("#status").textContent="Couldn't save in this browser"; }
   },500);
 }
 
-async function init(){
+const TRACKER_ID="kafka", EXPORT_NAME="kafka-progress.json";
+function exportProgress(){
+  const data={tracker:TRACKER_ID, format:1, exportedAt:new Date().toISOString(), ...persisted()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=EXPORT_NAME; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  $("#status").textContent="Exported "+EXPORT_NAME;
+}
+function importProgress(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    let data;
+    try{ data=JSON.parse(reader.result); }catch(e){ alert("That file isn't valid JSON."); return; }
+    if(!data||typeof data!=="object"||!data.days||typeof data.days!=="object"){ alert("That file doesn't look like a tracker export."); return; }
+    if(data.tracker&&data.tracker!==TRACKER_ID){ alert("That file is from the "+data.tracker+" tracker, not this one."); return; }
+    const count=d=>Object.values(d||{}).filter(r=>r&&r.done).length;
+    const when=data.exportedAt||data.updatedAt, whenText=when?new Date(when).toLocaleString():"an unknown date";
+    if(!confirm("Replace this browser's progress ("+count(state.days)+" done) with the file's progress ("+count(data.days)+" done, exported "+whenText+")?")) return;
+    const {tracker,format,exportedAt,view,...rest}=data;
+    state={...state,...rest}; if(!state.days)state.days={}; if(!state.templates)state.templates={};
+    state.view=currentWeek().w; save(); render();
+    $("#status").textContent="Imported "+file.name;
+  };
+  reader.onerror=()=>alert("Couldn't read that file.");
+  reader.readAsText(file);
+}
+function wireTransfer(){
+  $("#exportBtn").onclick=exportProgress;
+  const inp=$("#importFile");
+  $("#importBtn").onclick=()=>{ inp.value=""; inp.click(); };
+  inp.onchange=()=>{ if(inp.files&&inp.files[0]) importProgress(inp.files[0]); };
+}
+
+function init(){
   try{ const l=localStorage.getItem("kafka-tracker"); if(l) state={...state,...JSON.parse(l)}; }catch(e){}
   if(!state.days)state.days={}; if(!state.templates)state.templates={};
   const cw=currentWeek(); state.view=cw.w;
   render();
   $("#startDate").onchange=e=>{ state.start=e.target.value; state.view=currentWeek().w; save(); render(); };
 
-  db = window.claude ? await claude.use("db") : null;
-  if(db){
-    doc=db.doc("progress/main");
-    try{
-      const snap=await doc.get();
-      if(snap.exists){ const {view,...s}=snap.data(); state={...state,...s}; if(!state.days)state.days={}; if(!state.templates)state.templates={}; }
-      else await doc.set(persisted());
-      $("#status").textContent="Synced";
-    }catch(e){ $("#status").textContent="Offline (this browser only)"; doc=null; }
-  } else $("#status").textContent="Offline (this browser only)";
-  loaded=true; state.view=currentWeek().w; render();
-
-  dl = window.claude ? await claude.use("downloads") : null;
-  if(dl){ const b=$("#exportBtn"); b.hidden=false; b.onclick=async()=>{
-    try{ await dl.save({filename:"kafka-progress.json",data:JSON.stringify(persisted(),null,2)}); }catch(e){}
-  }; }
+  wireTransfer();
 }
 init();
 </script>
