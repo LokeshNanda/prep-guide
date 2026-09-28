@@ -13,6 +13,9 @@ trackers/sql.html           SQL Pattern Tracker        16 weeks x 6 days = 96   
 trackers/pyspark.html       PySpark Depth Tracker      20 weeks x 6 days = 120   localStorage key "pyspark-tracker"
 trackers/system-design.html System Design Tracker      20 weeks x 6 days = 120   localStorage key "sd-tracker"
 trackers/kafka.html         Kafka Depth Tracker        16 weeks x 6 days = 96    localStorage key "kafka-tracker"
+manifest.webmanifest        PWA manifest (name, icons, start_url, shortcuts to each tracker)
+sw.js                       service worker: precaches the shell, network-first with cache fallback
+icons/                      icon.svg is the source; the PNGs are rendered from it
 ```
 
 ## Hard rules
@@ -58,6 +61,18 @@ transient fields (`view`, `open`, and in SQL `hint`/`sol`) before saving.
 - Status line: "Saved in this browser" by default, "Exported …" / "Imported …" after a transfer,
   "Couldn't save in this browser" if `localStorage` throws (private mode, quota).
 
+## PWA
+
+- Every page links `manifest.webmanifest`, sets `theme-color` and the Apple meta tags, and registers
+  `sw.js` (root scope) only when served over http(s); `file://` skips it.
+- `sw.js` precaches the `SHELL` list on install. **When you add a tracker, add it to `SHELL`** and
+  to the manifest `shortcuts`. Same-origin requests are network-first, so a push reaches users on
+  their next online load without bumping `CACHE`; bump it only to purge stale entries.
+- Icons: edit `icons/icon.svg`, then re-render the PNGs (512, 192, 180 for Apple, and a 512
+  maskable with the artwork inside the central 80%). A headless-browser screenshot of the SVG works.
+- The index shows an "Install app" button when the browser fires `beforeinstallprompt` (Chrome,
+  Edge, Android) and an "Add to Home Screen" hint on iOS, which has no prompt API.
+
 ## Verifying a change
 
 There are no automated tests. Open the changed file in a browser (or `python -m http.server`
@@ -67,7 +82,8 @@ from the repo root and visit `/index.html`) and check:
 2. Light and dark modes both render.
 3. Mark a day done, reload, and confirm it persisted.
 4. Export, clear local storage, import the file, and confirm the progress comes back.
-5. Narrow the window to ~375px and confirm no horizontal scroll.
+5. With the local server stopped, reload: the page must still load from the service worker.
+6. Narrow the window to ~375px and confirm no horizontal scroll.
 
 ## Commits
 

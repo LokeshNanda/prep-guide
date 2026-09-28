@@ -34,6 +34,17 @@ folder. Where the file goes depends on the platform:
 Import opens the normal file picker on every platform, which on iPhone and iPad includes iCloud
 Drive and Google Drive.
 
+## Installing as an app
+
+The site is a Progressive Web App and works offline once opened.
+
+- **Android, Chrome or Edge:** open the live URL and press **Install app** on the home page, or use
+  the browser's install option.
+- **iPhone or iPad:** open the live URL in Safari, tap Share, then **Add to Home Screen**.
+
+Installed or not, progress still lives in that browser's local storage. Use Export and Import to
+move it between devices.
+
 ## Running locally
 
 Double-click any HTML file, or serve the folder:

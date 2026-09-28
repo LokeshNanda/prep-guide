@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2451D9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Prep Guide">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <title>Prep Guide</title>
 <meta name="description" content="Daily interview-prep trackers: DSA patterns, SQL patterns, PySpark depth, and system design.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,7 +47,8 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5}
 .wrap{max-width:960px;margin:0 auto;padding:28px 16px 48px}
-header{margin-bottom:24px}
+header{margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 13px;border-radius:8px;cursor:pointer;font:inherit;font-size:14px}
 h1{font-size:26px;margin:0 0 4px;letter-spacing:-.01em}
 .sub{margin:0;color:var(--ink2);max-width:60ch}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
@@ -60,8 +69,11 @@ footer a{color:inherit}
 <body>
 <div class="wrap">
 <header>
-  <h1>Prep Guide</h1>
-  <p class="sub">Five daily trackers. Progress is saved in this browser. Pick one and do today's session.</p>
+  <div>
+    <h1>Prep Guide</h1>
+    <p class="sub">Five daily trackers. Progress is saved in this browser. Pick one and do today's session.</p>
+  </div>
+  <button class="btn" id="installBtn" hidden>Install app</button>
 </header>
 
 <main class="grid">
@@ -100,10 +112,19 @@ footer a{color:inherit}
   </a>
 </main>
 
-<footer>Progress lives in this browser's local storage, per tracker. To carry it to another device, use Export in a tracker, then Import on the other device.</footer>
+<footer>Progress lives in this browser's local storage, per tracker. To carry it to another device, use Export in a tracker, then Import on the other device.<br><span id="iosHint" hidden>To install on iPhone or iPad: tap Share, then "Add to Home Screen".</span></footer>
 </div>
 
 <script>
+// Install prompt (Chrome / Edge / Android). iOS has no prompt API, so show a hint instead.
+let installEvt=null;
+addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); installEvt=e; document.getElementById("installBtn").hidden=false; });
+document.getElementById("installBtn").onclick=async()=>{ if(!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt=null; document.getElementById("installBtn").hidden=true; };
+addEventListener("appinstalled",()=>{ document.getElementById("installBtn").hidden=true; });
+const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+if(isIOS&&!standalone) document.getElementById("iosHint").hidden=false;
+
 // Read each tracker's saved state (same origin) and show a done count. Fails quietly.
 document.querySelectorAll("a.card[data-key]").forEach(card=>{
   let done=0;
@@ -115,6 +136,11 @@ document.querySelectorAll("a.card[data-key]").forEach(card=>{
   card.querySelector(".done").textContent=done;
   card.querySelector(".bar span").style.width=(Math.min(done,total)/total*100)+"%";
 });
+</script>
+<script>
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
 </script>
 </body>
 </html>
