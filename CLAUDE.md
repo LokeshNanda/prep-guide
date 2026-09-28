@@ -1,7 +1,8 @@
 # prep-guide
 
-Personal interview-prep trackers. Static site, no build step, hosted on GitHub Pages
-at https://lokeshnanda.github.io/prep-guide/ and also opened directly from disk.
+Personal interview-prep trackers. Static site, no build step, deployed to GitHub Pages by
+`.github/workflows/pages.yml` on every push to `main`. The user site has a custom domain, so it is served
+at https://lokeshnanda.com/prep-guide/ and also opened directly from disk.
 
 ## Layout
 

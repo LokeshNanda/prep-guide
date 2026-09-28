@@ -2,7 +2,7 @@
 
 Daily interview-prep trackers as single-file HTML pages. No build step, no backend.
 
-Live: https://lokeshnanda.github.io/prep-guide/
+Live: https://lokeshnanda.com/prep-guide/
 
 | Tracker | File | Plan |
 |---|---|---|
