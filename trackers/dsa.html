@@ -122,10 +122,49 @@ label.small{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 .ltab{border:1px solid var(--line);background:none;padding:6px 12px;border-radius:999px;cursor:pointer;font-size:13.5px;color:var(--ink2)}
 .ltab.on{background:var(--acc-soft);border-color:var(--acc);color:var(--acc)}
 .lpane{display:none}.lpane.on{display:block}
+
+/* Navigation between pages */
+.topnav{display:flex;justify-content:space-between;align-items:center;gap:10px 16px;flex-wrap:wrap;margin-bottom:16px;font-size:13px}
+.topnav .home{color:var(--ink2);text-decoration:none;font-weight:500;display:inline-flex;align-items:center;min-height:32px}
+.topnav .home:hover{color:var(--acc)}
+.topnav .switch{display:flex;gap:6px;flex-wrap:wrap}
+.topnav .switch a{display:inline-flex;align-items:center;min-height:30px;padding:0 11px;border-radius:999px;border:1px solid var(--line);color:var(--ink2);text-decoration:none;font-size:12.5px}
+.topnav .switch a:hover{border-color:var(--acc);color:var(--acc)}
+.topnav .switch a[aria-current]{background:var(--acc-soft);border-color:var(--acc);color:var(--acc);font-weight:600}
+.topnav a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* Today bar (phone only) */
+.jump{display:none;position:fixed;left:0;right:0;bottom:0;z-index:20;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.06)}
+.jump button{flex:1;display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc-soft);color:var(--ink);cursor:pointer;text-align:left}
+.jump .jl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--acc);white-space:nowrap}
+.jump .jt{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.jump .jgo{color:var(--acc);font-size:16px}
+
+/* Phone: today first, bigger targets, no zoom-on-focus */
+@media (max-width:700px){
+  .wrap{display:flex;flex-direction:column;padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  .wrap>*{margin-top:0}
+  .topnav{order:0} header{order:1;margin-bottom:16px} .week{order:2} .matrix{order:3;margin:18px 0} .lesson{order:4;margin:0 0 18px} .method{order:5} #scard{order:5}
+  .week{display:flex;flex-direction:column;gap:18px} #dcard{order:0} #wcard{order:1}
+  input,textarea,select,.sqlbox{font-size:16px}
+  .check{width:44px;height:44px;border-radius:12px;font-size:20px;margin-top:0}
+  .day{gap:12px;padding:16px 0}
+  .dtop{gap:8px 10px}
+  .pill{min-height:36px;padding:4px 12px;font-size:13px;display:inline-flex;align-items:center}
+  .toggle{min-height:36px;font-size:14px;padding:4px 6px}
+  .mgrid{grid-template-columns:52px repeat(20,32px);min-width:0;gap:6px}
+  .mgrid .lbl{font-size:11px}
+  .matrix{-webkit-mask-image:linear-gradient(to right,transparent,#000 16px,#000 calc(100% - 16px),transparent);mask-image:linear-gradient(to right,transparent,#000 16px,#000 calc(100% - 16px),transparent)}
+  .jump{display:flex}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
+<nav class="topnav" aria-label="Trackers">
+  <a class="home" href="../index.html">&larr; Prep Guide</a>
+  <div class="switch"><a href="dsa.html" aria-current="page">DSA</a><a href="sql.html">SQL</a><a href="pyspark.html">PySpark</a><a href="system-design.html">Design</a><a href="kafka.html">Kafka</a></div>
+</nav>
 <header>
   <div>
     <h1>DSA Pattern Tracker</h1>
@@ -161,6 +200,10 @@ label.small{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 </section>
 </div>
 
+<div class="jump" id="jump" hidden>
+  <button id="jumpBtn" type="button"><span class="jl">Today</span><span class="jt" id="jumpText"></span><span class="jgo" aria-hidden="true">&darr;</span></button>
+</div>
+
 <script>
 const PLAN = [
  {ph:"Foundations",t:"Arrays, strings & Big-O",tell:"Learn to say the time/space cost of every loop you write before you run it.",p:["Two Sum","Contains Duplicate","Reverse String","Best Time to Buy and Sell Stock","Move Zeroes","Merge Sorted Array"]},
@@ -193,7 +236,7 @@ function renderLesson(){
   const w=state.view, L=LESSONS[w], wk=PLAN[w]; const c=$("#lcard");
   const probs=L.problems.map((t,i)=>{const [a,...b]=t.split(": ");return `<li><b>Day ${i+1} — ${esc(a)}</b>: ${esc(b.join(": "))}</li>`;}).join("");
   const traps=L.traps.map(t=>`<li>${t}</li>`).join("");
-  c.innerHTML=`<details open><summary>Week ${w+1} lesson: ${esc(wk.t)}</summary>
+  const lopen=lessonOpen(); c.innerHTML=`<details ${lopen?"open":""}><summary>Week ${w+1} lesson: ${esc(wk.t)}</summary>
     <div class="ltabs">
       <button class="ltab ${ltab==="concept"?"on":""}" data-t="concept">Concept</button>
       <button class="ltab ${ltab==="template"?"on":""}" data-t="template">Code template</button>
@@ -241,6 +284,7 @@ function renderMatrix(){
   }
   const c=counts(); $("#doneCount").textContent=c.done; $("#unaidedCount").textContent=c.un; $("#revisitCount").textContent=c.rv;
   $("#bar").style.width=(c.done/120*100)+"%";
+  scrollMatrixToWeek(state.view);
 }
 
 function renderWeek(){
@@ -282,7 +326,28 @@ function set(w,d,patch,persist=true,quiet=false){
   if(persist) save();
   if(!quiet){ render(); }
 }
-function render(){ renderMatrix(); renderLesson(); renderWeek(); $("#startDate").value=state.start; }
+const phoneMQ=matchMedia("(max-width:700px)");
+function isPhone(){ return phoneMQ.matches; }
+phoneMQ.addEventListener("change",()=>render());
+function lessonOpen(){ const d=document.querySelector("#lcard details"); return d ? d.open : !isPhone(); }
+function scrollMatrixToWeek(w){
+  if(!isPhone()) return;
+  const m=document.querySelector(".matrix"), g=document.getElementById("mgrid"); const col=g && g.querySelectorAll(".wk")[w]; if(!m||!col) return;
+  const left=col.offsetLeft-52-6, right=col.offsetLeft+col.offsetWidth+6;
+  if(left<m.scrollLeft || right>m.scrollLeft+m.clientWidth) m.scrollLeft=Math.max(0,left-(m.clientWidth-52)/2);
+}
+function renderJump(){
+  const j=document.getElementById("jump"), t=document.getElementById("jumpText"); if(!j) return;
+  const cur=currentWeek(); const wk=PLAN[cur.w];
+  if(cur.d<0 || !wk || !wk.p[cur.d]){ j.hidden=true; return; }
+  const raw=wk.p[cur.d]; const name=String(Array.isArray(raw)?raw[1]:(raw&&typeof raw==="object"?(raw.t||raw.name||""):raw)).replace("*","");
+  const r=rec(cur.w,cur.d);
+  t.textContent=(r.done?"\u2713 ":"")+"W"+(cur.w+1)+" \u00b7 Day "+(cur.d+1)+" \u00b7 "+name;
+  j.hidden=false;
+  document.getElementById("jumpBtn").onclick=()=>{ if(state.view!==cur.w){ state.view=cur.w; render(); } document.getElementById("day"+cur.d)?.scrollIntoView({behavior:"smooth",block:"start"}); };
+}
+
+function render(){ renderJump(); renderMatrix(); renderLesson(); renderWeek(); $("#startDate").value=state.start; }
 function el(tag,cls,txt){ const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e; }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 

@@ -43,6 +43,22 @@ Curriculum edits go in `PLAN` (and `LESSONS` where present). Each week is
 and hold `done`, `unaided`, `revisit`, `note`, plus per-tracker extras. `persisted()` strips
 transient fields (`view`, `open`, and in SQL `hint`/`sol`) before saving.
 
+## Layout rules (phone vs desktop)
+
+- `@media (max-width:700px)` is the phone breakpoint. There, `.wrap` becomes a flex column and
+  sections are reordered with `order`: nav, header, week (day card before week card), matrix,
+  lesson, then extras (`.method`, `#scard`). Desktop keeps the source order: matrix, lesson, week.
+- On phones the lesson `<details>` starts closed; `lessonOpen()` preserves whatever the user set
+  across re-renders. Inputs and textareas (including `.sqlbox`) are 16px so iOS does not zoom.
+  The done control is 44px and pills 36px tall.
+- The matrix keeps its horizontal layout on phones; `scrollMatrixToWeek()` scrolls the viewed
+  week into view and a CSS mask fades the edges to signal overflow.
+- `#jump` is the fixed "Today" bar (phone only). `renderJump()` reads `currentWeek()` and the
+  day's title; day entries are strings in DSA/SQL/PySpark and `[kind, title]` arrays in
+  System Design and Kafka, so title lookups must handle both.
+- Every tracker has `<nav class="topnav">` with a home link and links to the other four;
+  `aria-current="page"` marks the current one. **Add a new tracker to this nav in all files.**
+
 ## Saving, export and import
 
 - `save()` writes the tracker's state to `localStorage` only (debounced). There is no server and
