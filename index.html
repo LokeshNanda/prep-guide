@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prep Guide</title>
+<meta name="description" content="Daily interview-prep trackers: DSA patterns, SQL patterns, PySpark depth, and system design.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F4F7; --panel:#FFFFFF; --ink:#18212E; --ink2:#5B6675; --line:#DCE1E8;
+  --done:#1E8F5A; --done-soft:#DDF3E8; --dot:#D4D9E1; --radius:12px;
+  --dsa:#2451D9; --dsa-soft:#E3E9FB;
+  --sql:#2451D9; --sql-soft:#E3E9FB;
+  --spark:#C2410C; --spark-soft:#FBE9DE;
+  --sd:#0E7C6B; --sd-soft:#DDF1EC;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#141922; --panel:#1C2330; --ink:#EEF1F5; --ink2:#9AA5B5; --line:#2C3542;
+  --done:#4BC98C; --done-soft:#173A2B; --dot:#2F3947;
+  --dsa:#7C9BFF; --dsa-soft:#22305A;
+  --sql:#7C9BFF; --sql-soft:#22305A;
+  --spark:#F59A6E; --spark-soft:#43271A;
+  --sd:#4FC3AE; --sd-soft:#173A34;
+}}
+:root[data-theme="dark"]{
+  --bg:#141922; --panel:#1C2330; --ink:#EEF1F5; --ink2:#9AA5B5; --line:#2C3542;
+  --done:#4BC98C; --done-soft:#173A2B; --dot:#2F3947;
+  --dsa:#7C9BFF; --dsa-soft:#22305A;
+  --sql:#7C9BFF; --sql-soft:#22305A;
+  --spark:#F59A6E; --spark-soft:#43271A;
+  --sd:#4FC3AE; --sd-soft:#173A34;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto;padding:28px 16px 48px}
+header{margin-bottom:24px}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.01em}
+.sub{margin:0;color:var(--ink2);max-width:60ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+a.card{display:flex;flex-direction:column;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;color:inherit;text-decoration:none;transition:border-color .15s,transform .15s}
+a.card:hover,a.card:focus-visible{border-color:var(--c);transform:translateY(-1px);outline:none}
+a.card:focus-visible{box-shadow:0 0 0 3px var(--c-soft)}
+.tag{align-self:flex-start;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--c);background:var(--c-soft);padding:3px 8px;border-radius:999px}
+h2{font-size:18px;margin:0}
+.card p{margin:0;color:var(--ink2);font-size:14px;flex:1}
+.meta{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink2);margin-top:4px}
+.meta b{color:var(--ink);font-weight:600}
+.bar{flex:1;height:6px;background:var(--dot);border-radius:3px;overflow:hidden}
+.bar span{display:block;height:100%;width:0;background:var(--done);border-radius:3px;transition:width .3s}
+footer{margin-top:32px;color:var(--ink2);font-size:13px}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Prep Guide</h1>
+  <p class="sub">Four daily trackers. Progress is saved in this browser. Pick one and do today's session.</p>
+</header>
+
+<main class="grid">
+  <a class="card" href="trackers/dsa.html" style="--c:var(--dsa);--c-soft:var(--dsa-soft)" data-key="dsa-tracker" data-total="120">
+    <span class="tag">DSA</span>
+    <h2>DSA Pattern Tracker</h2>
+    <p>4 weeks of foundations, then 16 patterns. Read the lesson, solve the day's problem, log the tell.</p>
+    <div class="meta"><b class="done">–</b><span>/ 120 solved</span><div class="bar"><span></span></div></div>
+  </a>
+
+  <a class="card" href="trackers/sql.html" style="--c:var(--sql);--c-soft:var(--sql-soft)" data-key="sql-tracker" data-total="96">
+    <span class="tag">SQL</span>
+    <h2>SQL Pattern Tracker</h2>
+    <p>16 weeks, 96 practical questions on one seeded company database. Write the query in the browser, check it, log the tell.</p>
+    <div class="meta"><b class="done">–</b><span>/ 96 solved</span><div class="bar"><span></span></div></div>
+  </a>
+
+  <a class="card" href="trackers/pyspark.html" style="--c:var(--spark);--c-soft:var(--spark-soft)" data-key="pyspark-tracker" data-total="120">
+    <span class="tag">PySpark</span>
+    <h2>PySpark Depth Tracker</h2>
+    <p>20 weeks from architecture to production. Do the exercise on real data, run the debug drill, log what the plan and the UI showed.</p>
+    <div class="meta"><b class="done">–</b><span>/ 120 done</span><div class="bar"><span></span></div></div>
+  </a>
+
+  <a class="card" href="trackers/system-design.html" style="--c:var(--sd);--c-soft:var(--sd-soft)" data-key="sd-tracker" data-total="120">
+    <span class="tag">System Design</span>
+    <h2>System Design Tracker</h2>
+    <p>20 weeks, 120 sessions. Foundations, HLD building blocks, LLD and patterns, classic HLD problems, timed mocks.</p>
+    <div class="meta"><b class="done">–</b><span>/ 120 done</span><div class="bar"><span></span></div></div>
+  </a>
+</main>
+
+<footer>Progress lives in your browser's local storage per tracker. Use each tracker's export when you want a backup.</footer>
+</div>
+
+<script>
+// Read each tracker's saved state (same origin) and show a done count. Fails quietly.
+document.querySelectorAll("a.card[data-key]").forEach(card=>{
+  let done=0;
+  try{
+    const raw=localStorage.getItem(card.dataset.key);
+    if(raw){ const s=JSON.parse(raw); done=Object.values(s.days||{}).filter(r=>r&&r.done).length; }
+  }catch(e){}
+  const total=Number(card.dataset.total)||1;
+  card.querySelector(".done").textContent=done;
+  card.querySelector(".bar span").style.width=(Math.min(done,total)/total*100)+"%";
+});
+</script>
+</body>
+</html>

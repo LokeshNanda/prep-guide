@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>System Design Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F4; --panel:#FFFFFF; --ink:#172026; --ink2:#5A6770; --line:#DAE0DE;
+  --acc:#0E7C6B; --acc-soft:#DDF1EC; --done:#1E8F5A; --done-soft:#DDF3E8; --warn:#C7641B; --warn-soft:#FCEBDD;
+  --hld:#2451D9; --hld-soft:#E3E9FB; --lld:#7A3FBF; --lld-soft:#EFE4FA;
+  --dot:#D3D9D7; --radius:10px;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#131917; --panel:#1B2321; --ink:#EDF2F0; --ink2:#98A6A1; --line:#2B3633;
+  --acc:#4FC3AE; --acc-soft:#173A34; --done:#4BC98C; --done-soft:#173A2B; --warn:#F0A05C; --warn-soft:#3F2A14;
+  --hld:#7C9BFF; --hld-soft:#22305A; --lld:#C39BFF; --lld-soft:#33234F; --dot:#2E3937;
+}}
+:root[data-theme="dark"]{
+  --bg:#131917; --panel:#1B2321; --ink:#EDF2F0; --ink2:#98A6A1; --line:#2B3633;
+  --acc:#4FC3AE; --acc-soft:#173A34; --done:#4BC98C; --done-soft:#173A2B; --warn:#F0A05C; --warn-soft:#3F2A14;
+  --hld:#7C9BFF; --hld-soft:#22305A; --lld:#C39BFF; --lld-soft:#33234F; --dot:#2E3937;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5}
+button,textarea,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px}
+h1{font-size:26px;font-weight:700;margin:0;letter-spacing:-.01em}
+.sub{color:var(--ink2);margin:2px 0 0;max-width:70ch}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);padding:8px 13px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--acc)}
+.btn:focus-visible,textarea:focus-visible,input:focus-visible,.dot:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.status{font-size:13px;color:var(--ink2)}
+
+/* Matrix hero */
+.matrix{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 14px;margin-bottom:22px;overflow-x:auto}
+.mgrid{display:grid;grid-template-columns:72px repeat(20,minmax(28px,1fr));gap:6px;align-items:center;min-width:760px}
+.mgrid .lbl{font-size:12px;color:var(--ink2)}
+.mgrid .wk{font-size:12px;color:var(--ink2);text-align:center;cursor:pointer;padding:2px 0;border-radius:6px;border:none;background:none}
+.mgrid .wk.cur{color:var(--acc);font-weight:600;background:var(--acc-soft)}
+.mgrid .ph{font-size:11px;text-align:center;padding:2px 0;border-radius:4px;color:var(--ink2);grid-column:span var(--span)}
+.mgrid .ph.hld{background:var(--hld-soft);color:var(--hld)} .mgrid .ph.lld{background:var(--lld-soft);color:var(--lld)}
+.dot{width:100%;aspect-ratio:1;border-radius:50%;background:var(--dot);border:none;cursor:pointer;padding:0;position:relative}
+.dot.done{background:var(--done)}
+.dot.unaided::after{content:"";position:absolute;inset:32%;border-radius:50%;background:var(--panel)}
+.dot.today{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--acc)}
+.dot.revisit{background:var(--warn)}
+.mfoot{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:13px;color:var(--ink2);align-items:center}
+.mfoot b{color:var(--ink);font-weight:600}
+.key{display:inline-flex;align-items:center;gap:6px}
+.key i{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--dot)}
+.key i.d{background:var(--done)} .key i.r{background:var(--warn)}
+.bar{height:6px;background:var(--dot);border-radius:3px;flex:1;min-width:140px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--done);width:0}
+.settings{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink2);flex-wrap:wrap}
+.settings input{border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--panel)}
+@media (prefers-reduced-motion:no-preference){.dot.today{animation:pulse 2s ease-in-out infinite}}
+@keyframes pulse{50%{box-shadow:0 0 0 2px var(--panel),0 0 0 6px var(--acc-soft)}}
+
+/* Lesson */
+.lesson{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:4px 18px 18px;margin-bottom:18px}
+.lesson summary{cursor:pointer;font-weight:600;font-size:16px;padding:14px 0;list-style:none;display:flex;align-items:center;gap:10px}
+.lesson summary::before{content:"▸";color:var(--acc);font-size:14px}
+.lesson details[open] summary::before{content:"▾"}
+.lesson summary::-webkit-details-marker{display:none}
+.lbody{max-width:78ch}
+.lbody h4{margin:18px 0 6px;font-size:15px}
+.lbody p{margin:6px 0}
+.lbody table{border-collapse:collapse;margin:8px 0;font-size:14px;width:100%}
+.lbody th,.lbody td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.lbody th{color:var(--ink2);font-weight:500}
+.lbody code{background:var(--bg);padding:1px 5px;border-radius:4px;font-size:.92em}
+.lbody pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:13.5px;line-height:1.45;max-width:none;white-space:pre}
+.lbody ol,.lbody ul{padding-left:22px;margin:6px 0}
+.lbody li{margin:4px 0}
+.probs li{margin:8px 0}
+.probs b{color:var(--acc)}
+.traps{background:var(--warn-soft);border-radius:8px;padding:10px 14px;margin-top:12px}
+.traps ul{margin:4px 0}
+.ltabs{display:flex;gap:6px;margin:4px 0 12px;flex-wrap:wrap}
+.ltab{border:1px solid var(--line);background:none;padding:6px 12px;border-radius:999px;cursor:pointer;font-size:13.5px;color:var(--ink2)}
+.ltab.on{background:var(--acc-soft);border-color:var(--acc);color:var(--acc)}
+.lpane{display:none}.lpane.on{display:block}
+
+/* Week */
+.week{display:grid;grid-template-columns:300px 1fr;gap:18px}
+@media (max-width:820px){.week{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.card h2{margin:0 0 4px;font-size:18px}
+.phase{font-size:13px;color:var(--ink2);margin-bottom:12px}
+.phase .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.tag.hld{background:var(--hld-soft);color:var(--hld)} .tag.lld{background:var(--lld-soft);color:var(--lld)} .tag.mix{background:var(--acc-soft);color:var(--acc)}
+.tell{background:var(--acc-soft);border-radius:8px;padding:10px 12px;font-size:14px;margin:10px 0 14px}
+.tell b{display:block;font-size:12px;color:var(--acc);margin-bottom:2px;font-weight:600}
+.navrow{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
+textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:9px 10px;min-height:70px;resize:vertical}
+label.small{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
+
+.day{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.day:first-of-type{border-top:none;padding-top:0}
+.day.done .pname{text-decoration:line-through;color:var(--ink2)}
+.check{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);background:none;cursor:pointer;margin-top:2px;display:grid;place-items:center;padding:0}
+.day.done .check{background:var(--done);border-color:var(--done);color:#fff}
+.dtop{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px}
+.dnum{font-size:12px;color:var(--ink2);width:44px}
+.kind{font-size:11px;padding:1px 7px;border-radius:4px;background:var(--bg);border:1px solid var(--line);color:var(--ink2)}
+.kind.D{background:var(--hld-soft);color:var(--hld);border-color:transparent}
+.kind.C{background:var(--lld-soft);color:var(--lld);border-color:transparent}
+.pname{font-weight:600;color:var(--ink)}
+.slink{font-size:12px;color:var(--acc);text-decoration:none;border-bottom:1px solid var(--line)}.slink:hover{border-color:var(--acc)}
+.pill{font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);background:none;cursor:pointer;color:var(--ink2)}
+.pill.on{background:var(--done-soft);border-color:var(--done);color:var(--done)}
+.pill.warn.on{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.stretch{font-size:12px;color:var(--warn)}
+.dlog{display:none;margin-top:10px}
+.day.open .dlog{display:block}
+.dlog textarea{min-height:56px}
+.toggle{font-size:13px;color:var(--acc);background:none;border:none;cursor:pointer;padding:0;margin-left:auto}
+.sunday{border-top:1px dashed var(--line);padding-top:14px;margin-top:4px;color:var(--ink2);font-size:14px}
+.method{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:4px 18px 14px;margin-bottom:18px;font-size:14px}
+.method summary{cursor:pointer;font-weight:600;padding:12px 0;list-style:none}
+.method summary::-webkit-details-marker{display:none}
+.method ol{margin:4px 0 0;padding-left:22px}
+.method li{margin:5px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>System Design Tracker</h1>
+    <p class="sub">20 weeks, 120 sessions. Foundations → HLD building blocks → LLD & patterns → classic HLD problems → timed mocks. One session a day, Day 7 is review.</p>
+  </div>
+  <div class="tools">
+    <span class="status" id="status">Loading…</span>
+    <button class="btn" id="exportBtn" hidden>Export JSON</button>
+  </div>
+</header>
+
+<section class="matrix" aria-label="Progress matrix">
+  <div class="mgrid" id="mgrid"></div>
+  <div class="mfoot">
+    <span><b id="doneCount">0</b> / 120 done</span>
+    <span><b id="unaidedCount">0</b> timed &amp; unaided</span>
+    <span><b id="revisitCount">0</b> to revisit</span>
+    <span><b id="hldCount">0</b>/<span id="hldTotal"></span> HLD · <b id="lldCount">0</b>/<span id="lldTotal"></span> LLD</span>
+    <div class="bar"><span id="bar"></span></div>
+    <span class="key"><i class="d"></i> done</span>
+    <span class="key"><i class="d" style="box-shadow:inset 0 0 0 3px var(--panel);border:1px solid var(--done)"></i> timed &amp; unaided</span>
+    <span class="key"><i class="r"></i> revisit</span>
+    <span class="settings">Start date <input type="date" id="startDate"></span>
+  </div>
+</section>
+
+<details class="method">
+  <summary>How to run a session (read once, then every mock)</summary>
+  <ol>
+    <li><b>Read / Estimate days (30–45 min):</b> read the concept tab, then close it and write the reference card from memory. Log one sentence: what decision does this concept let me make?</li>
+    <li><b>Design days (45 min, timed):</b> 5 min requirements &amp; non-functional goals · 5 min estimation · 10 min high-level boxes and API · 20 min deep-dive on the two hardest parts · 5 min failure modes and what you'd change at 10× scale. Speak out loud; draw on paper or a whiteboard app.</li>
+    <li><b>Code days (60 min):</b> requirements → use cases → classes &amp; interfaces (draw) → code the core flow → one extension to test the design. Write real, runnable code.</li>
+    <li><b>Mark "timed &amp; unaided"</b> only if you finished inside the time box without opening notes or the lesson.</li>
+    <li><b>Log every session:</b> the key requirement that shaped the design, the trade-off you stated, the bottleneck, one thing you missed.</li>
+  </ol>
+</details>
+
+<section class="lesson" id="lcard"></section>
+
+<section class="week">
+  <aside class="card" id="wcard"></aside>
+  <div class="card" id="dcard"></div>
+</section>
+</div>
+
+<script>
+// kind: R=read/derive, E=estimate, D=design (HLD), C=code (LLD), M=mock. Trailing * = stretch.
+const PLAN = [
+ {ph:"Foundations",tag:"mix",t:"Interview framework & estimation",tell:"Every design starts the same way: clarify, size, sketch, deepen. Never draw a box before you know the numbers.",p:[["R","Memorise latency numbers & powers of two"],["E","Estimate Twitter-scale storage, QPS and bandwidth"],["E","Estimate YouTube daily upload storage and CDN egress"],["R","Write the 5-step framework as a one-page checklist"],["D","Practise requirements clarification on 3 vague prompts"],["D","Dry run: URL shortener in 20 minutes, numbers first"]]},
+ {ph:"Foundations",tag:"mix",t:"Networking & API design",tell:"Client talks to server: which protocol, what shape, and how do failures and retries look?",p:[["R","DNS, TCP vs UDP, TLS: draw one request's lifecycle"],["R","HTTP semantics: methods, status codes, caching headers, keep-alive"],["D","REST vs gRPC vs GraphQL: choose for 3 scenarios and defend it"],["R","Real-time: long polling vs SSE vs WebSockets"],["D","API design: pagination, idempotency keys, versioning, rate-limit headers"],["D","Design the public API for a ride-hailing app*"]]},
+ {ph:"Foundations",tag:"mix",t:"Databases I: modelling, indexes, transactions",tell:"Data shape and access pattern pick the store; the index decides whether a query is a seek or a scan.",p:[["D","Normalise an e-commerce schema to 3NF"],["R","B-tree, composite and covering indexes: read an EXPLAIN plan"],["R","ACID and isolation levels: lost update, dirty and phantom reads"],["D","SQL vs document vs wide-column vs graph: choose per workload"],["D","Design the schema for a hotel booking system"],["C","Optimistic vs pessimistic locking: implement seat reservation"]]},
+ {ph:"Foundations",tag:"hld",t:"Databases II: replication, partitioning, consistency",tell:"One machine is not enough: copy the data or split it; each costs you consistency somewhere.",p:[["R","Leader-follower, multi-leader, leaderless replication and lag"],["R","Partitioning: range vs hash, hot spots, secondary indexes across shards"],["C","Consistent hashing: implement it with virtual nodes"],["R","CAP, PACELC, linearizability vs eventual consistency"],["D","Shard a 1-billion-row user table"],["D","Shard a multi-tenant SaaS database and plan a resharding migration*"]]},
+ {ph:"HLD building blocks",tag:"hld",t:"Caching & CDNs",tell:"Same data read many times and slight staleness is fine? Cache it. Know where it lives, how it fills, and how it dies.",p:[["R","Cache-aside, read/write-through, write-back: draw the flows"],["R","Eviction (LRU, LFU, TTL) and the hit-rate math"],["R","Cache stampede, hot keys, invalidation strategies"],["R","CDN: push vs pull, cache keys, edge vs origin"],["D","Add caching layers to your hotel booking design"],["D","Design a distributed cache (Memcached-like)*"]]},
+ {ph:"HLD building blocks",tag:"hld",t:"Load balancing, scaling & resilience",tell:"Traffic grows or a node dies: spread the load, keep servers stateless, fail fast, retry carefully.",p:[["R","L4 vs L7 load balancers; round robin, least connections, consistent hash"],["R","Horizontal vs vertical scaling; stateless services; session handling"],["R","Timeouts, retries with jitter, circuit breakers, bulkheads"],["R","Rate limiting: token bucket, leaky bucket, fixed and sliding window"],["D","Design a distributed rate limiter"],["D","Design health checks and auto-scaling for a web tier"]]},
+ {ph:"HLD building blocks",tag:"hld",t:"Messaging & asynchronous processing",tell:"Work can happen later, fan out to many consumers, or spikes beyond what the DB takes: put a queue in the middle.",p:[["R","Queue vs pub/sub; Kafka partitions, consumer groups, offsets"],["R","Delivery guarantees: at-most, at-least, exactly-once; idempotent consumers"],["R","Dead-letter queues, backpressure, ordering, the outbox pattern"],["D","Design a notification system (push, email, SMS)"],["D","Design a job scheduler with delayed and recurring jobs"],["D","Design a distributed message queue*"]]},
+ {ph:"HLD building blocks",tag:"hld",t:"Distributed systems essentials",tell:"Nodes must agree, or must not do the same thing twice: quorums, leases, consensus, idempotency.",p:[["R","Clocks and ordering: NTP drift, Lamport and vector clocks"],["R","Quorum reads/writes, leader election, Raft in one page"],["R","Distributed locks and leases; fencing tokens"],["R","Distributed transactions: 2PC vs sagas; idempotency keys"],["D","Design a unique ID generator (Snowflake)"],["D","Design a distributed key-value store (Dynamo-style)*"]]},
+ {ph:"HLD building blocks",tag:"hld",t:"Storage engines & search",tell:"How data sits on disk decides write vs read speed; search is a different index altogether.",p:[["R","B-tree vs LSM tree; WAL, compaction, bloom filters"],["R","Blob/object storage: metadata path vs data path"],["R","Inverted index, tokenisation, ranking basics (TF-IDF, BM25)"],["R","Time-series and columnar storage: when each wins"],["D","Design search autocomplete (typeahead)"],["D","Design an object store (S3-like)*"]]},
+ {ph:"LLD & patterns",tag:"lld",t:"OOP, SOLID & modelling",tell:"List the nouns (classes) and verbs (methods) from the requirements, then ask where change will come from.",p:[["R","SOLID with one refactor example each"],["R","Composition vs inheritance; interfaces vs abstract classes"],["R","UML class and sequence diagrams: draw three from prose"],["C","LLD: parking lot (classes, then code)"],["C","LLD: library management system"],["C","LLD: hotel management system (classes and interfaces only)"]]},
+ {ph:"LLD & patterns",tag:"lld",t:"Design patterns I: creational & structural",tell:"Object creation is getting messy, or you need to wrap, adapt or compose behaviour without touching the original.",p:[["C","Singleton (thread-safe), Factory Method, Abstract Factory"],["C","Builder and Prototype: implement a query builder"],["C","Adapter, Facade, Proxy: wrap a third-party payment gateway"],["C","Decorator and Composite: pizza toppings; file-system tree"],["C","LLD: logging framework (chain + singleton + strategy)"],["C","LLD: pluggable notification service with adapters"]]},
+ {ph:"LLD & patterns",tag:"lld",t:"Design patterns II: behavioural",tell:"Behaviour varies at runtime, objects must react to each other, or actions must be undoable or queued.",p:[["C","Strategy and Template Method: payment and export flows"],["C","Observer and Mediator: an in-process event bus"],["C","State: vending machine"],["C","Command: text editor with undo/redo"],["C","Chain of Responsibility and Iterator: middleware pipeline"],["C","LLD: elevator system (state + strategy)"]]},
+ {ph:"LLD & patterns",tag:"lld",t:"Classic LLD problems",tell:"'Design X' means classes, not boxes: use cases → entities → interfaces → code → one extension.",p:[["C","LRU cache (doubly linked list + map)"],["C","Tic-tac-toe and Snake & Ladder (extensible board games)"],["C","Splitwise (expense sharing)"],["C","Movie ticket booking (BookMyShow)"],["C","Ride-hailing LLD (in-process matching)"],["C","Chess*"]]},
+ {ph:"LLD & patterns",tag:"lld",t:"Concurrency in LLD",tell:"Shared mutable state plus more than one thread: name the invariant, then pick the primitive that protects it.",p:[["R","Threads, mutex, semaphore, condition variables, atomics"],["C","Producer–consumer with a bounded blocking queue"],["C","Read–write lock and a thread-safe LRU cache"],["C","Connection pool"],["C","In-memory KV store with TTL and an expiry thread"],["C","Token-bucket rate limiter class and a thread-safe singleton"]]},
+ {ph:"Classic HLD problems",tag:"hld",t:"Read-heavy systems",tell:"Reads dwarf writes: cache aggressively, precompute, serve from replicas and the CDN.",p:[["D","URL shortener (full 45-minute run)"],["D","Pastebin"],["D","Instagram / photo sharing"],["D","News feed (fan-out on write vs on read)"],["D","Yelp / nearby places"],["D","Google Drive / Dropbox*"]]},
+ {ph:"Classic HLD problems",tag:"hld",t:"Real-time & write-heavy systems",tell:"Many writes per second and users expect sub-second delivery: persistent connections, queues, idempotent writes.",p:[["D","Chat system (1:1 and group)"],["D","Notification & presence service"],["D","Twitter (fan-out, timelines, trending)"],["D","Live comments for a live stream"],["D","Metrics & monitoring system"],["D","Collaborative editor (Google Docs, OT vs CRDT)*"]]},
+ {ph:"Classic HLD problems",tag:"hld",t:"Geo, matching & marketplaces",tell:"Moving objects, proximity and matching supply to demand: geohash or quadtree, shard by region, tolerate eventual consistency.",p:[["R","Location indexing: geohash, quadtree, S2 in one page"],["D","Uber / ride matching"],["D","Food delivery (order flow + dispatch)"],["D","Google Maps (tiles, routing, ETA)"],["D","Hotel / ticket booking at scale (no double booking)"],["D","Stock exchange matching engine*"]]},
+ {ph:"Classic HLD problems",tag:"hld",t:"Data-intensive systems",tell:"Terabytes a day through batch or stream pipelines: partition the work, make it idempotent, checkpoint.",p:[["D","Web crawler"],["D","YouTube / Netflix (upload, transcoding, CDN)"],["D","Ad click event aggregation (stream + batch)"],["D","Distributed logging & analytics pipeline"],["D","Payment system (idempotency, reconciliation)"],["D","Recommendation data pipeline*"]]},
+ {ph:"Classic HLD problems",tag:"hld",t:"Infrastructure & platform systems",tell:"The interviewer asks for the primitive itself: build what others build on, and reason about failure explicitly.",p:[["D","Distributed cache (revisit, now with replication)"],["D","Distributed lock / coordination service (ZooKeeper-like)"],["D","Blob storage (revisit S3 with durability math)"],["D","Email service (Gmail)"],["D","Distributed file system (GFS / HDFS)"],["D","Multi-region active-active architecture*"]]},
+ {ph:"Integration",tag:"mix",t:"Timed mocks",tell:"No topic label. Run the framework on a clock; talk while you draw; end with failure modes and 10× scale.",p:[["M","HLD mock #1 (45 min, timed, unseen prompt)"],["M","LLD mock #1 (60 min, timed, unseen prompt)"],["M","HLD mock #2"],["M","LLD mock #2"],["M","HLD mock #3 with a peer or recorded"],["M","LLD mock #3 with a peer or recorded"]]},
+];
+const KIND={R:"Read",E:"Estimate",D:"Design",C:"Code",M:"Mock"};
+const PHASES=[["Foundations",4,"mix"],["HLD blocks",5,"hld"],["LLD",5,"lld"],["HLD problems",5,"hld"],["Mocks",1,"mix"]];
+
+const LESSONS = [
+{ // W1
+concept: `<p>A system design interview is a 45-minute conversation with a whiteboard, scored on <b>how you think</b>, not on reproducing a diagram. The structure below is the same for every prompt; the numbers are what make it specific.</p>
+<h4>The 5-step framework (time budget for 45 min)</h4>
+<table><tr><th>Step</th><th>Minutes</th><th>Output</th></tr>
+<tr><td>1. Requirements</td><td>5</td><td>3–5 functional, 3 non-functional (latency, availability, consistency, scale)</td></tr>
+<tr><td>2. Estimation</td><td>5</td><td>DAU → QPS (read &amp; write) → storage/yr → bandwidth → cache size</td></tr>
+<tr><td>3. High-level design</td><td>10</td><td>API signatures, data model, boxes and arrows for the happy path</td></tr>
+<tr><td>4. Deep dive</td><td>20</td><td>The two hardest components; trade-offs stated as "X because Y, at the cost of Z"</td></tr>
+<tr><td>5. Wrap-up</td><td>5</td><td>Bottlenecks, failure modes, what changes at 10×</td></tr></table>
+<h4>Numbers you say without thinking</h4>
+<p>1 day ≈ 10⁵ s (86,400). So <b>QPS ≈ daily events / 10⁵</b>; peak ≈ 2–3× average. 1M users × 1 KB = 1 GB. Memory ref ~100 ns; SSD random read ~100 µs; disk seek ~10 ms; same-region network round trip ~0.5 ms; cross-continent ~150 ms. A single Postgres box handles ~thousands of writes/s; a web server ~10k simple requests/s; Redis ~100k ops/s.</p>
+<p>The habit this week: <b>before drawing, say the QPS and the storage</b>. The numbers tell you whether you need a cache, a shard, or nothing at all.</p>`,
+template: `REQUIREMENTS   functional: who does what?   non-functional: latency p99? availability 9s? consistency?
+               out of scope: say it out loud
+ESTIMATE       DAU ___  actions/user/day ___  -> writes/s = DAU*actions/1e5   reads/s = writes * read:write ratio
+               obj size ___ B -> storage/yr = writes/s * 3e7 * size       cache = 20% of daily reads * size
+API            POST /x  {..} -> 201 {id}     GET /x/{id}     (idempotency-key header on writes)
+HIGH LEVEL     client -> LB -> stateless service -> cache -> DB (+ queue for async work)
+DEEP DIVE      pick 2: data model & partition key | hot path latency | consistency | the "hard" feature
+WRAP UP        single points of failure? bottleneck at 10x? what would I monitor?`,
+problems: [
+"Latency numbers & powers of two: write the table from memory three times across the day. Then convert: 2¹⁰ ≈ 1K, 2²⁰ ≈ 1M, 2³⁰ ≈ 1G. Know that 1M requests/day is only ~12 QPS.",
+"Twitter-scale estimate: 300M DAU, 50% tweet daily, 2 tweets each → 3.5k writes/s; reads 100× → 350k reads/s. Tweet ~1 KB + 20% with a 1 MB image → storage/day. Write every assumption down; the point is the chain, not the answer.",
+"YouTube estimate: 5M uploads/day × ~1 GB raw → ~5 PB/day before transcoding; multiply by 3 for renditions. CDN egress: 1B views/day × 10 MB. Notice that egress cost dwarfs storage, which is why the CDN is the design.",
+"Framework checklist: one page, handwritten. Under each step write the question you will literally ask the interviewer. Keep this page beside you for every design day in weeks 15–19.",
+"Requirements on vague prompts: take 'design a calendar', 'design a parking app', 'design Reddit'. For each, spend 5 minutes producing 5 functional and 3 non-functional requirements plus an explicit out-of-scope list. Time yourself.",
+"URL shortener dry run: only steps 1–3, 20 minutes. Get the numbers (100M new URLs/month → ~40 writes/s, 100:1 reads), the API, the key-generation choice (hash vs counter vs pre-generated keys), and the data model. You will do the full version in week 15.",
+],
+traps: [
+"Drawing boxes before stating the numbers, so the design has no reason for any of its parts.",
+"Estimating storage but forgetting replication (×3) and indexes.",
+"Saying 'we'll use a NoSQL database' without a workload that demands it.",
+]},
+
+{ // W2
+concept: `<p>Every system you draw is clients talking to servers over a network. Interviewers probe here because the choices are concrete: protocol, message shape, connection lifecycle, and what happens when a call fails.</p>
+<h4>One request, end to end</h4>
+<p>DNS resolves the name (cached at every layer, TTL-controlled). TCP three-way handshake (1 RTT), TLS handshake (1–2 RTTs, hence connection reuse and HTTP/2 matter). Then the HTTP request hits a load balancer and a server. <b>TCP</b> gives ordering and delivery; <b>UDP</b> gives speed with no guarantees (video, DNS, games, QUIC builds reliability back on top).</p>
+<h4>API styles</h4>
+<table><tr><th>Style</th><th>Use when</th><th>Cost</th></tr>
+<tr><td>REST (JSON over HTTP)</td><td>Public APIs, CRUD, cacheable reads</td><td>Over/under-fetching, chatty</td></tr>
+<tr><td>gRPC (protobuf, HTTP/2)</td><td>Internal service-to-service, low latency, streaming</td><td>Not browser-native, binary debugging</td></tr>
+<tr><td>GraphQL</td><td>Many client shapes, mobile with nested data</td><td>Caching harder, N+1 on the server, complexity</td></tr></table>
+<h4>Real-time delivery</h4>
+<p><b>Long polling</b>: client holds a request until data or timeout; simple, works everywhere. <b>SSE</b>: one-way server push over plain HTTP; ideal for feeds and notifications. <b>WebSockets</b>: full duplex persistent connection; chat, games, collaborative editing. Persistent connections mean the server holds state per connection, so you need a connection registry and a way to route a message to the right server.</p>
+<h4>API hygiene interviewers listen for</h4>
+<p>Cursor pagination (not offset) for large lists. <b>Idempotency keys</b> on POST so retries do not double-charge. Versioning in the path or header. Rate-limit headers (limit, remaining, reset). Return 429 and 503 with Retry-After.</p>`,
+template: `REQUEST PATH   DNS (TTL) -> TCP (1 RTT) -> TLS (1-2 RTT) -> LB -> service    reuse connections: keep-alive / HTTP2
+PICK           external + cacheable -> REST | internal + latency -> gRPC | many client shapes -> GraphQL
+REAL-TIME      rare updates -> long polling | server->client only -> SSE | bidirectional -> WebSocket
+ENDPOINT       POST /v1/orders   headers: Idempotency-Key, Authorization
+               GET  /v1/orders?cursor=..&limit=50 -> {items, next_cursor}
+ERRORS         400 client | 401/403 auth | 404 | 409 conflict | 429 + Retry-After | 5xx retryable with backoff
+STATE          WebSocket servers are stateful: connection registry (user -> server) in Redis; pub/sub to route`,
+problems: [
+"Request lifecycle: draw the timeline with round trips labelled. Then explain why the second request to the same host is faster and what HTTP/2 multiplexing removes.",
+"HTTP semantics: for GET, POST, PUT, PATCH, DELETE state safe/idempotent/cacheable. Then Cache-Control, ETag and If-None-Match: write the conditional-request exchange that returns 304.",
+"REST vs gRPC vs GraphQL: scenarios are a public weather API, an internal order→inventory call at 50k QPS, and a mobile app screen showing a user, their 10 latest posts and each post's top comment. Defend each choice in two sentences, including what you give up.",
+"Real-time options: design the transport for (a) stock ticker to 1M browsers, (b) 1:1 chat, (c) a dashboard refreshing every 30 s. Include how a server knows which connection belongs to which user after a reconnect.",
+"API design: write the full endpoint list for a to-do app with pagination, idempotent creates, versioning and rate-limit headers. Then answer: what happens if the client retries a POST after a timeout?",
+"Ride-hailing API (stretch): rider and driver endpoints, location updates (how often? which transport?), trip state machine as status transitions, and webhooks vs polling for trip updates.",
+],
+traps: [
+"Offset pagination on a table that changes while the user pages through it.",
+"Treating a WebSocket server as stateless behind a round-robin load balancer.",
+"Choosing gRPC for a browser client, or GraphQL 'because it is modern'.",
+]},
+
+{ // W3
+concept: `<p>Most system-design mistakes are data-model mistakes. The interviewer wants to see that you pick a store from the <b>access pattern</b> and that you know what an index actually does.</p>
+<h4>Relational modelling</h4>
+<p>Normalise to remove duplication (3NF: every non-key column depends on the key, the whole key, and nothing but the key). Then <b>denormalise deliberately</b> where a hot read joins too much. Know one-to-many (foreign key on the many side) and many-to-many (join table).</p>
+<h4>Indexes</h4>
+<p>A B-tree index turns a scan into O(log n) seeks on the indexed columns, in order. A composite index on (a, b) serves queries filtered on a, or a and b, but not b alone (leftmost prefix). A <b>covering index</b> includes every column the query needs so the table is never touched. Every index slows writes and costs space; the interviewer wants "index the columns in the WHERE and ORDER BY of the hot query", not "index everything".</p>
+<h4>Transactions</h4>
+<p>ACID: atomic (all or nothing), consistent (constraints hold), isolated (concurrent transactions do not see each other's partial work), durable (committed means on disk). Isolation levels trade safety for throughput: read uncommitted → read committed (no dirty reads) → repeatable read (no non-repeatable reads) → serializable (no phantoms, no write skew). Postgres default is read committed; MySQL InnoDB is repeatable read.</p>
+<h4>Choosing the store</h4>
+<table><tr><th>Workload</th><th>Reach for</th></tr>
+<tr><td>Relations, joins, transactions, moderate scale</td><td>Postgres / MySQL</td></tr>
+<tr><td>Flexible per-record shape, read by ID, high write rate</td><td>Document (MongoDB) or wide-column (Cassandra)</td></tr>
+<tr><td>Simple key → value at huge QPS</td><td>Redis / DynamoDB</td></tr>
+<tr><td>Deep relationship traversal</td><td>Graph (Neo4j)</td></tr></table>`,
+template: `MODEL          entities -> relationships (1:N fk on N side; M:N join table) -> normalise -> denormalise the hot read
+INDEX RULE     index = columns in WHERE + ORDER BY of the top 3 queries; composite order matters (leftmost prefix)
+               covering index when the query is read-heavy and narrow; every index taxes writes
+ISOLATION      RC: no dirty reads | RR: same row reads same twice | SERIALIZABLE: as if one at a time
+               lost update -> SELECT ... FOR UPDATE (pessimistic)  or  version column check (optimistic)
+CHOOSE         need joins/transactions -> relational | shape varies, id lookups, big writes -> NoSQL
+               say the access pattern before the store, every time`,
+problems: [
+"E-commerce schema: users, products, orders, order_items, addresses, reviews. Get to 3NF, then denormalise product name into order_items and explain why (historical price and name must not change).",
+"EXPLAIN plan: in Postgres or MySQL create a 1M-row table, run a query with and without an index, read the plan (Seq Scan vs Index Scan vs Index Only Scan). Then build a composite index and show which query orders use it.",
+"Isolation anomalies: write two interleaved transactions that produce a lost update at read committed, then fix it once with FOR UPDATE and once with a version column.",
+"Store per workload: session store, product catalogue with 200 optional attributes, bank ledger, social graph 'friends of friends', click events at 1M/s. One sentence each, naming the access pattern first.",
+"Hotel booking schema: hotels, rooms, room_types, reservations, payments. Decide the uniqueness constraint that prevents double booking and the index that makes 'available rooms for dates X–Y' fast.",
+"Seat reservation: implement both locking styles in code against a real database. Run two concurrent clients and prove that one prevents the double sale; log which has better throughput when contention is low.",
+],
+traps: [
+"Indexing every column, then wondering why writes are slow.",
+"Assuming the default isolation level prevents lost updates.",
+"Choosing NoSQL and then needing a join on the first feature.",
+]},
+
+{ // W4
+concept: `<p>When one machine cannot hold the data or serve the load, you either <b>replicate</b> (same data on many nodes) or <b>partition</b> (different data on each node), usually both. Each introduces a question: which copy is right, and where does a key live?</p>
+<h4>Replication</h4>
+<p><b>Leader–follower</b>: writes go to one leader, followers copy the log and serve reads. Simple; read scaling; failover needs leader election; <b>replication lag</b> means a user may not read their own write (fix: read-your-writes routing to the leader). <b>Multi-leader</b>: writes in several regions; conflicts must be resolved (last-writer-wins, CRDTs). <b>Leaderless</b> (Dynamo, Cassandra): write to W nodes, read from R; with W + R &gt; N you overlap and see the latest write; read repair and hinted handoff fill gaps.</p>
+<h4>Partitioning (sharding)</h4>
+<p>By <b>key range</b>: ordered scans work, but sequential keys create a hot shard. By <b>hash of key</b>: even spread, no range scans. <b>Consistent hashing</b> places nodes and keys on a ring so adding a node moves only ~1/N of keys; virtual nodes even out the load. Hot partitions (a celebrity user) need key salting or a dedicated shard. Secondary indexes are either local per shard (scatter-gather reads) or global (extra write hop).</p>
+<h4>Consistency vocabulary</h4>
+<p><b>CAP</b>: during a partition choose consistency (refuse) or availability (serve stale). <b>PACELC</b> adds: else, trade latency for consistency. <b>Linearizable</b>: every read sees the latest write, as if one copy. <b>Eventual</b>: replicas converge if writes stop. Most products are eventual for feeds and linearizable for money and uniqueness.</p>`,
+template: `REPLICATE      leader-follower (default) | multi-leader (multi-region writes, conflicts) | leaderless (W+R>N quorum)
+LAG            read-your-writes -> route that user's reads to leader for N seconds, or version-stamp reads
+PARTITION KEY  pick the key that appears in every hot query; hash it; avoid monotonic keys
+               hot key? salt (key#1..k) or isolate; cross-shard query? scatter-gather or global index
+RING           consistent hashing + virtual nodes; add node -> ~1/N keys move
+CONSISTENCY    money, uniqueness, locks -> linearizable (single leader / consensus)
+               feeds, counters, likes -> eventual is fine, say so and say why
+CAP LINE       "under partition we choose ___ because ___"`,
+problems: [
+"Replication modes: for each, draw the write path and list one failure (leader dies mid-write; two leaders update the same row; a quorum write with N=3, W=2, R=2 where one node is down). State what the client sees.",
+"Partitioning: shard an orders table by order_id (hash) vs by customer_id vs by created_at (range). For each, which queries are single-shard and which are scatter-gather? Which one has a hot spot at midnight on Black Friday?",
+"Consistent hashing in code: ring as a sorted list of hashed virtual nodes, binary search for a key, add and remove nodes, print how many keys moved. Compare with plain modulo hashing when a node is added.",
+"CAP/PACELC: classify Postgres with sync replication, Cassandra with quorum, DynamoDB, Redis Sentinel, ZooKeeper. Then write the one sentence you would say in an interview about the trade-off for a bank ledger vs a like counter.",
+"Shard 1B users: choose the key, count shards (rows per shard, storage per shard), design 'find user by email' (global index or lookup table) and 'list users in a country' (scatter or a separate index).",
+"Multi-tenant SaaS (stretch): shard by tenant_id, handle one tenant that is 100× the others, and plan a live resharding from 8 to 16 shards with dual writes and backfill. Decide when reads switch over.",
+],
+traps: [
+"Claiming strong consistency while reading from followers.",
+"Picking a sequential ID as the shard key.",
+"Forgetting that a global secondary index makes every write two writes.",
+]},
+
+{ // W5
+concept: `<p>A cache is a smaller, faster copy of data closer to the reader. It is the first thing to add when reads dominate and the first thing that goes wrong when you forget how it is kept fresh.</p>
+<h4>Where a cache can live</h4>
+<p>Browser (Cache-Control), CDN edge (static and semi-static content), a reverse proxy, an application-side in-memory cache, a distributed cache (Redis, Memcached) in front of the database, and the database's own buffer pool. Each layer changes the numbers: a 90% hit rate turns 100k reads/s into 10k DB reads/s.</p>
+<h4>Write and fill strategies</h4>
+<table><tr><th>Strategy</th><th>How</th><th>Trade-off</th></tr>
+<tr><td>Cache-aside</td><td>App reads cache, on miss reads DB and populates</td><td>Simple; first read is slow; stale until TTL or invalidation</td></tr>
+<tr><td>Read-through</td><td>Cache itself loads from DB on miss</td><td>Same, but logic lives in the cache layer</td></tr>
+<tr><td>Write-through</td><td>Write goes to cache and DB synchronously</td><td>Always fresh; slower writes</td></tr>
+<tr><td>Write-back</td><td>Write to cache, flush to DB later</td><td>Fast writes; data loss if cache dies</td></tr></table>
+<h4>Failure modes to name unprompted</h4>
+<p><b>Stampede</b> (thundering herd): a hot key expires and thousands of requests hit the DB at once. Fixes: request coalescing / single-flight, locks on refill, probabilistic early expiry, jittered TTLs. <b>Hot key</b>: one key exceeds a single cache node's throughput; replicate it across nodes or add a local L1 cache. <b>Invalidation</b>: delete on write (not update, to avoid races), or version the key. <b>Eviction</b>: LRU is the default; LFU for skewed popularity; TTL bounds staleness.</p>
+<h4>CDN</h4>
+<p>Pull CDN fetches from origin on first miss (simple, good for long-tail). Push CDN is loaded ahead (good for planned releases). Cache key = URL + selected headers; versioned URLs (asset.v2.js) make invalidation free.</p>`,
+template: `WHERE          browser -> CDN -> reverse proxy -> app memory (L1) -> Redis/Memcached (L2) -> DB buffer pool
+DEFAULT        cache-aside + TTL + delete-on-write; write-through when reads must be fresh; never write-back for money
+SIZE           cache the hot 20%: daily reads * 20% * object size; hit rate target ~90%+
+STAMPEDE       single-flight lock per key | early refresh before TTL | jitter TTLs +-10%
+HOT KEY        L1 cache in each app node | replicate key on k cache nodes with suffix
+INVALIDATE     delete key on write (not update); or version in key: user:42:v7
+CDN            static -> push/versioned URLs | user content -> pull, TTL by content type; cache key = path + vary headers`,
+problems: [
+"Cache strategies: draw all four flows with a read hit, read miss, and write. For each, when does a reader see stale data and for how long?",
+"Eviction and hit rate: implement LRU in 20 lines (you did the LLD version's cousin in DSA). Then compute: with 100k reads/s and 90% hit rate, DB load is 10k/s; at 80% it doubles. Say why the last few percent of hit rate matter most.",
+"Stampede, hot keys, invalidation: for a product page cache with a 60 s TTL during a flash sale, list what breaks and apply one fix each. Write the race that makes 'update cache on write' wrong and 'delete on write' safer.",
+"CDN: design asset delivery for a news site (images, JS bundles, article HTML that changes on edit). Choose push vs pull per type, set TTLs, and explain how an edited article reaches readers within a minute.",
+"Hotel booking + caching: add caches to the week-3 design. What can be cached (hotel details, search results with short TTL) and what must never be (availability at checkout)? Where does read-your-writes matter?",
+"Distributed cache (stretch): clients hash keys to nodes (consistent hashing), each node runs an LRU with a memory cap, replication for hot keys, handling a node death (keys just miss), and the protocol (get/set/delete with TTL). Estimate QPS per node.",
+],
+traps: [
+"Caching data that must be fresh (inventory, balances) without saying how invalidation works.",
+"Updating the cache on write and creating a stale-overwrites-fresh race.",
+"Forgetting that a cache miss storm can take down the database it was protecting.",
+]},
+
+{ // W6
+concept: `<p>Horizontal scaling only works if any server can handle any request. This week is about making that true (stateless services), spreading traffic (load balancing), and keeping the system standing when parts fail (resilience patterns).</p>
+<h4>Load balancing</h4>
+<p><b>L4</b> balances on IP and port, fast and protocol-agnostic. <b>L7</b> reads HTTP, so it can route by path or header, terminate TLS, and do sticky sessions. Algorithms: round robin, weighted, least connections, least response time, and consistent hashing (same client to same server, useful for local caches). Health checks remove bad nodes; a load balancer itself is made redundant with active–passive pairs or DNS-level balancing.</p>
+<h4>Stateless services</h4>
+<p>Move session state to Redis or a signed cookie (JWT) so any node can serve any user. Then scaling is adding nodes behind the balancer, and auto-scaling on CPU or queue depth is safe.</p>
+<h4>Resilience patterns</h4>
+<p><b>Timeouts</b> on every call (no timeout is an infinite one). <b>Retries</b> only for idempotent operations, with exponential backoff and jitter, and a retry budget so retries do not amplify an outage. <b>Circuit breaker</b>: after N failures stop calling the dependency for a cool-down, then probe. <b>Bulkheads</b>: separate thread pools or instances per dependency so one slow downstream cannot exhaust everything. <b>Load shedding</b>: reject early (429/503) when over capacity rather than queue forever.</p>
+<h4>Rate limiting algorithms</h4>
+<table><tr><th>Algorithm</th><th>Behaviour</th></tr>
+<tr><td>Token bucket</td><td>Allows bursts up to bucket size; refills at rate r. The default answer.</td></tr>
+<tr><td>Leaky bucket</td><td>Smooths output to a constant rate; queue in front.</td></tr>
+<tr><td>Fixed window</td><td>Simple counter per window; 2× burst at boundaries.</td></tr>
+<tr><td>Sliding window log / counter</td><td>Accurate; log costs memory, counter approximates.</td></tr></table>`,
+template: `LB             L4 for raw throughput | L7 for path routing, TLS termination, sticky sessions
+               algorithm: least connections (default) | consistent hash (cache locality) | weighted (canary)
+STATELESS      session -> Redis or JWT; files -> object store; then scale = add nodes
+CALLS          timeout on everything | retry idempotent only, exp backoff + jitter, retry budget ~10%
+               circuit breaker: closed -> open (N fails) -> half-open probe | bulkhead per dependency
+SHED           over capacity -> 429/503 fast with Retry-After; priority queues for critical traffic
+RATE LIMIT     token bucket per (user, endpoint) in Redis: keys tokens+timestamp; Lua script for atomicity
+               distributed: local approximate + central sync, or route user to same limiter node`,
+problems: [
+"Load balancers: design the LB layer for a service with 200 nodes across 2 zones. Choose L4 or L7, algorithm, health check interval, and how the LB is itself not a single point of failure.",
+"Stateless: take a service that stores logged-in sessions in process memory and make it horizontally scalable. Compare Redis sessions vs JWT: revocation, size, latency, security.",
+"Resilience: write pseudo-code for a call to a payment provider with timeout, retry with backoff and jitter (only on safe errors), circuit breaker states, and a bulkhead. Then describe the retry storm that happens without a budget.",
+"Rate limiting algorithms: implement token bucket and sliding-window counter. Feed both a burst of 100 requests at t=0 and 100 at t=59.9 s with a 100/min limit; show the boundary behaviour.",
+"Distributed rate limiter: requirements (per-user and per-API limits, 1M users, low latency), the Redis-backed token bucket with an atomic script, what to do when Redis is down (fail open or closed?), and how to sync counters across regions.",
+"Health checks and auto-scaling: define liveness vs readiness, choose scaling signals (CPU, latency, queue depth), cool-down periods, min/max nodes, and how to avoid flapping. What is the risk of scaling on CPU for an I/O-bound service?",
+],
+traps: [
+"Retrying non-idempotent writes and double-charging.",
+"Sticky sessions as the 'fix' for stateful servers.",
+"A rate limiter that is more expensive than the request it protects.",
+]},
+
+{ // W7
+concept: `<p>A queue decouples the producer from the consumer in time and in capacity. It is the answer to "what if a spike arrives", "this step is slow", and "many services need to know". It is also where duplicated and lost messages come from, so know the guarantees.</p>
+<h4>Queue vs log</h4>
+<p>A <b>message queue</b> (SQS, RabbitMQ) delivers each message to one consumer and deletes it. A <b>log</b> (Kafka) keeps messages in partitions with offsets; consumer groups read independently and can replay. Ordering is per partition only, so the partition key is the ordering key (all events for one order go to one partition). Throughput scales with partitions; parallelism is bounded by partitions per consumer group.</p>
+<h4>Delivery guarantees</h4>
+<p><b>At-most-once</b>: ack before processing; may lose. <b>At-least-once</b>: ack after processing; may duplicate. <b>Exactly-once</b> is really at-least-once plus <b>idempotent consumers</b> (dedupe on a message ID, or make the operation naturally idempotent). Say that sentence in interviews.</p>
+<h4>Patterns</h4>
+<p><b>Outbox</b>: write the DB row and the event in the same transaction to an outbox table; a relay publishes it, so you never have a DB write without its event. <b>Dead-letter queue</b>: after N failed attempts, park the message for inspection instead of blocking. <b>Backpressure</b>: bounded queues and consumer lag as the scaling signal. <b>Delayed / scheduled</b> messages via a time-indexed store (Redis sorted set by fire-time) or a broker feature. <b>Fan-out</b>: one event, many consumer groups (pub/sub).</p>`,
+template: `USE QUEUE      spikes | slow steps | fan-out to many consumers | retryable side effects
+QUEUE vs LOG   one consumer, delete on ack -> SQS/RabbitMQ | replay, many groups, ordering per key -> Kafka
+PARTITION KEY  = the thing whose events must stay ordered (order_id, user_id)
+GUARANTEE      at-least-once + idempotent consumer (dedupe table keyed by message_id) = "exactly-once"
+OUTBOX         same tx: insert row + insert outbox event -> relay publishes -> mark sent
+FAILURE        retry with backoff -> after N -> dead-letter queue + alert; poison messages never block a partition
+SCALE          consumer lag -> add consumers up to #partitions; then add partitions (re-keying caution)
+DELAY          Redis ZSET (score = fire_at) + poller | broker delay queues`,
+problems: [
+"Queue vs pub/sub, Kafka basics: draw a topic with 3 partitions and two consumer groups. Show which consumer gets which partition, what an offset commit means, and what happens when a consumer dies mid-batch.",
+"Delivery guarantees: for an 'order placed' event that sends an email and decrements inventory, show how each guarantee level misbehaves. Then design the idempotent consumer with a processed_message_ids table.",
+"DLQ, backpressure, outbox: write the outbox table and the relay loop. Then explain why 'publish to Kafka after committing to Postgres' can lose events, and why 'publish before commit' can emit phantom events.",
+"Notification system: requirements (push, email, SMS; user preferences; rate limits; 10M/day), the API, a queue per channel, provider adapters with retries and DLQs, dedupe, and a template service. Where does 'at-least-once' show up as a duplicate push?",
+"Job scheduler: one-off delayed jobs and cron-style recurring ones, exactly-once execution per schedule (lease with fencing), horizontal workers, missed runs after downtime, and a time-indexed store. Estimate the poll cost at 10M scheduled jobs.",
+"Distributed message queue (stretch): topics and partitions, append-only segment files, replication with a leader per partition and ISR, consumer offsets, retention, and what you give up vs Kafka to keep it buildable in 45 minutes.",
+],
+traps: [
+"Promising exactly-once from the broker instead of from idempotent consumers.",
+"Choosing a partition key that puts all hot traffic on one partition.",
+"Writing to the database and then publishing the event as two separate steps.",
+]},
+
+{ // W8
+concept: `<p>Once there is more than one node, the hard problems are agreement and uniqueness: who is the leader, is this lock still mine, did that write happen exactly once. Interviewers rarely want Raft internals; they want you to know when consensus is required and when a cheaper trick works.</p>
+<h4>Time and order</h4>
+<p>Clocks drift; NTP keeps them within tens of milliseconds, never exactly. So never use wall-clock time to order events across machines. <b>Lamport clocks</b> give a total order consistent with causality; <b>vector clocks</b> detect concurrency (used for conflict detection in Dynamo). Hybrid logical clocks combine both in practice.</p>
+<h4>Agreement</h4>
+<p><b>Quorum</b>: with N replicas, W + R &gt; N guarantees a read overlaps the latest write. <b>Leader election and consensus</b> (Raft, Paxos, ZAB): a majority agrees on a log; tolerates (N−1)/2 failures; used inside ZooKeeper, etcd, Consul, and every managed database's control plane. You use these systems for small, critical metadata (leader, config, locks), never for bulk data.</p>
+<h4>Locks and leases</h4>
+<p>A distributed lock is a <b>lease</b>: it expires, so a paused holder does not block forever. Because a paused holder may wake up believing it still holds the lock, the resource must check a <b>fencing token</b> (monotonic number issued with the lease) and reject stale writers. Redis single-node locks are fine for best-effort; correctness needs a consensus store.</p>
+<h4>Cross-service writes</h4>
+<p><b>2PC</b> gives atomic commit across databases but blocks on coordinator failure; avoided in web-scale systems. <b>Sagas</b>: a chain of local transactions with compensating actions (refund, release inventory). Every step must be idempotent, which brings back <b>idempotency keys</b>: client-generated, stored with the result, returned on retry.</p>`,
+template: `ORDER          never wall clock across nodes; Lamport for order, vector clock for concurrency, HLC in practice
+QUORUM         N=3, W=2, R=2 -> reads see latest; W=1 fast but weak
+CONSENSUS      only for small critical state: leader, config, locks, membership -> etcd/ZooKeeper/Consul
+LOCK           lease with TTL + fencing token; resource rejects token < last seen
+ID GEN         64-bit: 1 sign | 41 ms timestamp | 10 machine id | 12 sequence  -> 4096 ids/ms/node, sortable
+               alternatives: DB auto-inc (SPOF) | UUIDv4 (random, not sortable) | ticket server ranges
+CROSS-SERVICE  saga: T1 -> T2 -> T3, compensations C2, C1; each step idempotent by key
+IDEMPOTENCY    store (key -> status, response) with the write; on retry return stored response`,
+problems: [
+"Clocks: give an example where two nodes disagree on which of two writes came first. Assign Lamport timestamps to a 3-process message diagram; then vector clocks, and mark which pairs are concurrent.",
+"Quorums and Raft: for N=5, which (W,R) pairs are consistent? Then write Raft in one page: terms, leader heartbeat, election timeout, log replication with majority ack, what a follower does with a conflicting entry.",
+"Locks: design a lock service API (acquire with TTL, renew, release) on top of etcd or ZooKeeper. Walk through the GC-pause scenario and show the fencing token saving the storage layer from a stale writer.",
+"2PC vs saga: an order flow across order, payment and inventory services. Draw 2PC and where it blocks. Then the saga with compensations and the idempotency key path for a client retry after a timeout.",
+"Snowflake ID generator: requirements (unique, roughly time-sorted, 10k IDs/s, no coordination at runtime), the bit layout, machine-ID assignment, clock-rollback handling, and how to sort by time across nodes with skew.",
+"Dynamo-style KV store (stretch): consistent hashing with virtual nodes, N/W/R quorum replication, vector clocks or LWW for conflicts, hinted handoff, read repair, anti-entropy with Merkle trees, gossip membership. Pick the deep dive: conflict resolution.",
+],
+traps: [
+"Using Redis SET NX as a correctness lock with no fencing token.",
+"Reaching for consensus to store bulk data.",
+"Sorting cross-node events by wall-clock timestamp.",
+]},
+
+{ // W9
+concept: `<p>Storage engines decide the write and read cost of every database you draw. Search engines maintain a completely different index. Knowing both lets you explain <em>why</em> Cassandra writes fast and Elasticsearch finds text fast.</p>
+<h4>B-tree vs LSM tree</h4>
+<table><tr><th></th><th>B-tree (Postgres, MySQL)</th><th>LSM tree (Cassandra, RocksDB, LevelDB)</th></tr>
+<tr><td>Write</td><td>In place, random I/O, page splits</td><td>Append to memtable + WAL, flush to sorted SSTables</td></tr>
+<tr><td>Read</td><td>One index path, predictable</td><td>Check memtable, then several SSTables (bloom filters skip most)</td></tr>
+<tr><td>Best for</td><td>Read-heavy, transactional</td><td>Write-heavy, time-ordered data</td></tr>
+<tr><td>Background cost</td><td>Vacuum / fragmentation</td><td>Compaction (write amplification)</td></tr></table>
+<p>The <b>write-ahead log</b> is what makes either durable: append the change first, apply later, replay after a crash.</p>
+<h4>Blob and object storage</h4>
+<p>Files bigger than a few MB do not belong in a database. An object store separates the <b>metadata path</b> (name, size, owner, location, in a database) from the <b>data path</b> (bytes striped and replicated or erasure-coded across storage nodes). Uploads use pre-signed URLs so bytes never pass through your app servers; large files upload in parts. Durability comes from replication or erasure coding (e.g. 6+3 survives 3 losses at 1.5× overhead vs 3× for triple replication).</p>
+<h4>Search</h4>
+<p>An <b>inverted index</b> maps each term to the list of documents containing it (postings). Query: tokenise, look up postings, intersect, rank (TF-IDF or BM25). Updates are batched into segments (Lucene), which is why search is near-real-time, not real-time. Autocomplete uses a trie or a sorted term dictionary with top-k precomputed per prefix.</p>
+<h4>Time-series and columnar</h4>
+<p>Metrics arrive in time order and are read by ranges and aggregates: store by time bucket, compress deltas, downsample old data. Analytics scan a few columns over billions of rows: <b>columnar</b> layout (Parquet, ClickHouse, BigQuery) reads only those columns and compresses them well.</p>`,
+template: `ENGINE         read-heavy + transactions -> B-tree | write-heavy + time-ordered -> LSM (+ bloom filters, compaction)
+DURABLE        WAL append -> ack -> apply; fsync policy is the latency/durability knob
+OBJECT STORE   metadata DB (path -> chunks, nodes) + data nodes; pre-signed URL upload; multipart; erasure code 6+3
+SEARCH         inverted index: term -> [doc ids]; BM25 rank; segments merged in background; NRT ~1s
+TYPEAHEAD      trie / prefix -> top-k list precomputed; update offline hourly; cache hot prefixes at edge
+TIME-SERIES    partition by (metric, time bucket); delta compress; downsample 1s -> 1m -> 1h; TTL old data
+COLUMNAR       analytics scans -> Parquet/ClickHouse; row store for OLTP; keep them separate (CDC between)`,
+problems: [
+"B-tree vs LSM: trace one write and one point read through each. Then explain write amplification and read amplification, and why bloom filters make LSM reads acceptable.",
+"Object storage paths: draw an upload of a 5 GB file (multipart, pre-signed URLs) and a download. Where do the metadata and bytes live? Compute overhead for 3× replication vs 6+3 erasure coding and state the read-latency trade.",
+"Inverted index: build one over 1,000 sentences in code. Support AND queries by intersecting sorted postings, then rank with TF-IDF. Note how updates would be handled (append segment, merge later).",
+"Time-series and columnar: for a metrics system at 1M points/s and a product analytics warehouse, pick storage layout, partitioning, compression and retention. What query is fast in each and slow in the other?",
+"Typeahead: requirements (top 10 suggestions under 100 ms, 1B queries/day), data collection pipeline from query logs, trie build offline, sharding the trie by prefix, serving from memory with edge caching, and how fresh trending queries get in.",
+"S3-like object store (stretch): API, metadata service with partitioning by bucket/key, data nodes with chunking and erasure coding, placement and repair on node loss, consistency of list-after-write, and the durability math for eleven nines.",
+],
+traps: [
+"Storing images as BLOBs in the relational database.",
+"Assuming search updates are visible instantly.",
+"Running analytics scans on the OLTP database.",
+]},
+
+{ // W10
+concept: `<p>Low-level design asks you to turn a paragraph of requirements into classes that are easy to extend. Interviewers grade the <b>shape</b>: clear responsibilities, interfaces at the points of change, and code that runs.</p>
+<h4>From prose to classes</h4>
+<ol><li>Underline nouns → candidate classes and attributes. Underline verbs → methods and relationships.</li>
+<li>Write the <b>use cases</b> as sentences: "A member borrows a book if fewer than 5 are out and none are overdue."</li>
+<li>Draw the class diagram: boxes, associations with multiplicity (1..*), inheritance arrows, interfaces.</li>
+<li>Ask "what will change?" and put an interface there (pricing strategy, payment method, notification channel).</li>
+<li>Code the core use case end to end, then add one extension without editing existing classes.</li></ol>
+<h4>SOLID as questions</h4>
+<table><tr><th>Principle</th><th>Ask yourself</th></tr>
+<tr><td>Single responsibility</td><td>Does this class have more than one reason to change?</td></tr>
+<tr><td>Open/closed</td><td>Can I add a new type without editing a switch statement?</td></tr>
+<tr><td>Liskov</td><td>Can every subclass stand in for the parent without surprises?</td></tr>
+<tr><td>Interface segregation</td><td>Do implementers have to stub methods they do not need?</td></tr>
+<tr><td>Dependency inversion</td><td>Does high-level logic depend on an interface, not a concrete class?</td></tr></table>
+<h4>Composition over inheritance</h4>
+<p>Inheritance shares behaviour along one axis and breaks when a second axis appears (Vehicle × FuelType × Ownership). Composition injects the varying part as a collaborator (a <code>ParkingStrategy</code>, a <code>FeeCalculator</code>). Use inheritance for a true is-a with shared code; use interfaces for capabilities.</p>`,
+template: `from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional
+
+class VehicleType(Enum): BIKE=1; CAR=2; TRUCK=3
+
+@dataclass
+class Vehicle:
+    plate: str
+    kind: VehicleType
+
+@dataclass
+class Spot:
+    id: str
+    kind: VehicleType            # spot size
+    vehicle: Optional[Vehicle] = None
+    def is_free(self): return self.vehicle is None
+
+class FeeStrategy(ABC):          # point of change -> interface
+    @abstractmethod
+    def fee(self, ticket) -> float: ...
+
+class HourlyFee(FeeStrategy):
+    RATES = {VehicleType.BIKE: 10, VehicleType.CAR: 30, VehicleType.TRUCK: 60}
+    def fee(self, ticket): return self.RATES[ticket.vehicle.kind] * max(1, ticket.hours())
+
+class ParkingLot:                # facade for the use cases
+    def __init__(self, spots, fee: FeeStrategy):
+        self.spots, self.fee, self.tickets = spots, fee, {}
+    def park(self, v: Vehicle):
+        spot = next((s for s in self.spots if s.is_free() and s.kind.value >= v.kind.value), None)
+        if not spot: raise RuntimeError("full")
+        spot.vehicle = v; t = Ticket(v, spot); self.tickets[v.plate] = t; return t
+    def leave(self, plate):
+        t = self.tickets.pop(plate); t.spot.vehicle = None; return self.fee.fee(t)`,
+problems: [
+"SOLID: for each principle write a 10-line 'before' that violates it and the 'after' that fixes it. The classic pairs: a Report class that also emails; a shape-area switch; a Square extending Rectangle; a fat Printer interface; a Service newing up its own MySQLRepository.",
+"Composition vs inheritance: model Vehicle with electric/petrol and owned/rented. Show the inheritance explosion, then the composition version. Then state the rule you will use in interviews to decide.",
+"UML: draw class and sequence diagrams for 'a customer checks out a cart with a coupon', 'an elevator answers a hall call', and 'a user resets a password'. Include multiplicities and one interface each.",
+"Parking lot: requirements (multiple floors, spot sizes, hourly fees, entry/exit gates, find-nearest-spot), classes, then code park and leave with a strategy for spot selection and one for fees. Extension: add an EV spot with charging fee without editing ParkingLot.",
+"Library: members, books vs book copies (the classic split), borrow/return with limits and due dates, reservations, fines. Code the borrow use case; the extension is a notification when a reserved copy is returned.",
+"Hotel management (classes only): rooms and room types, guests, reservations with a state machine, payments, housekeeping. 45 minutes on the whiteboard, no code; the exercise is the diagram and the interfaces you place.",
+],
+traps: [
+"A God class named Manager or System that does everything.",
+"Modelling Book when the requirement needs BookCopy.",
+"Getting stuck on diagrams and never writing runnable code.",
+]},
+{ // W11
+concept: `<p>Design patterns are named answers to recurring shape problems. In an LLD interview you rarely name more than three, but you must <b>reach for the right one when the requirement changes</b>. Creational patterns manage object construction; structural patterns compose objects into larger shapes.</p>
+<h4>Creational</h4>
+<table><tr><th>Pattern</th><th>Reach for it when</th></tr>
+<tr><td>Singleton</td><td>Exactly one instance (config, connection pool, logger). Make it thread-safe; prefer dependency injection in tests.</td></tr>
+<tr><td>Factory Method</td><td>The caller says which kind it needs by name or type; creation logic lives in one place (PaymentFactory.create("upi")).</td></tr>
+<tr><td>Abstract Factory</td><td>Families of related objects that must match (Windows vs Mac widgets; test vs prod clients).</td></tr>
+<tr><td>Builder</td><td>Many optional parameters, validation at the end, immutable result (HttpRequest, SQL query).</td></tr>
+<tr><td>Prototype</td><td>Cloning a configured object is cheaper or clearer than constructing (default game pieces).</td></tr></table>
+<h4>Structural</h4>
+<table><tr><th>Pattern</th><th>Reach for it when</th></tr>
+<tr><td>Adapter</td><td>Make a third-party interface fit yours (each payment gateway behind one PaymentGateway).</td></tr>
+<tr><td>Facade</td><td>One simple entry point over a messy subsystem (CheckoutService.placeOrder).</td></tr>
+<tr><td>Proxy</td><td>Same interface, extra control: caching, lazy loading, access checks, rate limiting.</td></tr>
+<tr><td>Decorator</td><td>Add behaviour in layers at runtime without subclass explosion (toppings, compression + encryption streams).</td></tr>
+<tr><td>Composite</td><td>Tree of part–whole where leaves and containers share an interface (files/folders, UI, org charts).</td></tr></table>
+<p>The interviewer's follow-up is always "now add X". Patterns exist so that the answer is "add a class", not "edit three switch statements".</p>`,
+template: `import threading
+
+class Config:                                    # thread-safe singleton
+    _inst = None; _lock = threading.Lock()
+    def __new__(cls):
+        if cls._inst is None:
+            with cls._lock:
+                if cls._inst is None: cls._inst = super().__new__(cls)
+        return cls._inst
+
+class PaymentGateway(ABC):                       # target interface
+    @abstractmethod
+    def charge(self, amount_paise: int, token: str) -> str: ...
+
+class StripeAdapter(PaymentGateway):             # adapter over a foreign API
+    def __init__(self, client): self.c = client
+    def charge(self, amount_paise, token): return self.c.create_charge(amount=amount_paise, source=token)["id"]
+
+class PaymentFactory:                            # factory method
+    _registry = {"stripe": StripeAdapter}
+    @classmethod
+    def create(cls, name, **deps) -> PaymentGateway: return cls._registry[name](**deps)
+
+class Pizza(ABC):
+    @abstractmethod
+    def cost(self) -> int: ...
+class Margherita(Pizza):
+    def cost(self): return 200
+class Topping(Pizza):                            # decorator: wraps a Pizza, is a Pizza
+    def __init__(self, base: Pizza, price: int): self.base, self.price = base, price
+    def cost(self): return self.base.cost() + self.price
+
+class QueryBuilder:                              # builder with fluent API
+    def __init__(self, table): self.t, self.w, self.lim = table, [], None
+    def where(self, cond): self.w.append(cond); return self
+    def limit(self, n): self.lim = n; return self
+    def build(self):
+        q = f"SELECT * FROM {self.t}" + (" WHERE " + " AND ".join(self.w) if self.w else "")
+        return q + (f" LIMIT {self.lim}" if self.lim else "")`,
+problems: [
+"Singleton and factories: implement a thread-safe Singleton (double-checked locking) and explain why a plain lazy check is racy. Then a Factory Method for notification channels by name and an Abstract Factory that returns matching (client, serializer) pairs for prod vs test.",
+"Builder and Prototype: build a SQL query builder with where/orderBy/limit and validation in build(). Then Prototype: a chess-board setup cloned from a template rather than constructed each game.",
+"Adapter, Facade, Proxy: define your PaymentGateway interface, write two adapters over made-up vendor APIs with different shapes, put a CheckoutFacade in front (validate → charge → record), and a CachingProxy for a slow currency-rate lookup.",
+"Decorator and Composite: pizza with toppings where cost() and description() compose; then a file system where File and Folder share size() and Folder recurses. Extension: add a compressed-folder decorator.",
+"Logging framework: levels, multiple appenders (console, file, remote), a chain of loggers with parent fallback, a singleton root, formatting strategy. Async appender is the extension.",
+"Pluggable notification service: Channel interface, adapters for email/SMS/push over fake vendor clients, a factory keyed by user preference, a decorator that rate-limits any channel, and a facade notify(user, event).",
+],
+traps: [
+"Using Singleton for anything that is not truly global; it hides dependencies.",
+"Subclassing the vendor's client instead of wrapping it.",
+"Decorating with inheritance so the combinations multiply again.",
+]},
+
+{ // W12
+concept: `<p>Behavioural patterns handle <b>who does what, and when</b>: swapping algorithms, reacting to events, running state machines, and turning actions into objects. Most classic LLD problems are one of these in disguise.</p>
+<table><tr><th>Pattern</th><th>Reach for it when</th><th>Classic LLD</th></tr>
+<tr><td>Strategy</td><td>Same step, interchangeable algorithms chosen at runtime</td><td>Pricing, spot selection, matching, routing</td></tr>
+<tr><td>Template Method</td><td>Fixed skeleton, subclasses fill in steps</td><td>Report export, data import pipelines</td></tr>
+<tr><td>Observer</td><td>Many objects react to a change; publisher does not know them</td><td>Stock alerts, order status, UI updates</td></tr>
+<tr><td>Mediator</td><td>Many-to-many chatter centralised through one hub</td><td>Chat room, air-traffic control, event bus</td></tr>
+<tr><td>State</td><td>Behaviour depends on state and transitions are explicit</td><td>Vending machine, order lifecycle, elevator, ATM</td></tr>
+<tr><td>Command</td><td>Requests as objects: queue, log, undo, redo</td><td>Text editor, transactions, remote control</td></tr>
+<tr><td>Chain of Responsibility</td><td>A request passes handlers until one takes it</td><td>Middleware, approvals, logging levels, ATM cash dispensing</td></tr>
+<tr><td>Iterator</td><td>Traverse a collection without exposing its structure</td><td>Playlists, paginated results</td></tr></table>
+<h4>State machines, properly</h4>
+<p>List states and events, then the transition table (state × event → next state, action). Illegal transitions throw. Each state is a class with the same interface; the context delegates. This is the single most reused idea in LLD: orders, tickets, trips, elevators, parking gates, vending machines all have one.</p>
+<h4>Undo</h4>
+<p>Command objects with execute() and undo(); two stacks. Undo pops from done, calls undo, pushes to redone. A new command clears the redo stack. Store the minimal inverse (the deleted text and position), not a full snapshot, unless a snapshot (Memento) is simpler.</p>`,
+template: `class State(ABC):                                 # vending machine states
+    def insert_coin(self, m, amt): raise IllegalTransition()
+    def select(self, m, item):     raise IllegalTransition()
+    def dispense(self, m):         raise IllegalTransition()
+
+class Idle(State):
+    def insert_coin(self, m, amt): m.balance += amt; m.state = HasMoney()
+class HasMoney(State):
+    def insert_coin(self, m, amt): m.balance += amt
+    def select(self, m, item):
+        if m.balance >= m.price(item): m.selected = item; m.state = Dispensing()
+class Dispensing(State):
+    def dispense(self, m): m.release(m.selected); m.balance -= m.price(m.selected); m.state = Idle()
+
+class VendingMachine:                            # context delegates to state
+    def __init__(self): self.state, self.balance, self.selected = Idle(), 0, None
+    def insert_coin(self, amt): self.state.insert_coin(self, amt)
+
+class Command(ABC):
+    @abstractmethod
+    def execute(self): ...
+    @abstractmethod
+    def undo(self): ...
+class Insert(Command):
+    def __init__(self, doc, pos, text): self.d, self.p, self.t = doc, pos, text
+    def execute(self): self.d.text = self.d.text[:self.p] + self.t + self.d.text[self.p:]
+    def undo(self):    self.d.text = self.d.text[:self.p] + self.d.text[self.p+len(self.t):]
+
+class Editor:
+    def __init__(self): self.done, self.redone = [], []
+    def run(self, cmd): cmd.execute(); self.done.append(cmd); self.redone.clear()
+    def undo(self):
+        if self.done: c = self.done.pop(); c.undo(); self.redone.append(c)
+
+class EventBus:                                  # observer / mediator
+    def __init__(self): self.subs = defaultdict(list)
+    def on(self, topic, fn): self.subs[topic].append(fn)
+    def emit(self, topic, payload):
+        for fn in list(self.subs[topic]): fn(payload)`,
+problems: [
+"Strategy and Template Method: a payment flow where the strategy is card/UPI/wallet and the template is validate → authorise → capture → notify. Add a new strategy and a new export format (CSV, JSON) without touching the callers.",
+"Observer and Mediator: an in-process event bus with on/emit and unsubscribe. Then a stock price publisher with three subscribers, one of which throws; decide whether the others still get the event and how.",
+"Vending machine: states Idle, HasMoney, Dispensing, OutOfStock; events insert, select, dispense, refund. Write the transition table first, then the classes. Extension: exact-change-only mode.",
+"Text editor with undo/redo: Insert, Delete, Replace commands, two stacks, and a macro command that groups several. Extension: cursor position restored on undo.",
+"Middleware pipeline: handlers for auth, rate limit, logging, then the actual route; each can short-circuit. Then an iterator over paginated API results that hides the cursor.",
+"Elevator: multiple cars, hall and cabin requests, a State per car (Idle, MovingUp, MovingDown, DoorsOpen), a Strategy for dispatch (nearest car, SCAN/LOOK), and a tick() simulation. Extension: express elevators serving only some floors.",
+],
+traps: [
+"A state machine implemented as nested if-statements on string flags.",
+"Undo implemented by re-parsing history instead of storing inverses.",
+"Observers that mutate the publisher during notification.",
+]},
+
+{ // W13
+concept: `<p>These are the prompts interviewers actually give. Each is a rehearsal of the same loop: <b>use cases → entities → interfaces at the change points → runnable core → one extension</b>. Aim for working code in 45–60 minutes with the diagram done in the first 10.</p>
+<h4>The 10-minute opening</h4>
+<ol><li>Clarify scope with 3 questions (single user or many? persistence? concurrency?).</li>
+<li>List use cases as sentences with an actor.</li>
+<li>Draw entities and the two or three interfaces (strategy, state, observer) you expect to need.</li>
+<li>Name the invariant the code must protect (no double booking; a game has one winner; balances sum to zero).</li></ol>
+<h4>Recurring shapes</h4>
+<table><tr><th>Problem</th><th>Core shape</th><th>Likely extension</th></tr>
+<tr><td>LRU cache</td><td>Hash map + doubly linked list, O(1) ops</td><td>TTL, LFU, thread-safety</td></tr>
+<tr><td>Board games</td><td>Board, Player, Piece, Rules/WinStrategy, Game loop with State</td><td>N×N board, new piece, replay</td></tr>
+<tr><td>Splitwise</td><td>User, Group, Expense, Split strategy (equal/exact/percent), Balance sheet</td><td>Simplify debts (min transactions)</td></tr>
+<tr><td>Ticket booking</td><td>Show, Seat, Booking with State, seat lock with expiry, Payment</td><td>Concurrent lock, dynamic pricing</td></tr>
+<tr><td>Ride hailing</td><td>Rider, Driver, Trip with State, Matching strategy, Fare strategy, Observer for updates</td><td>Surge, pooled rides</td></tr>
+<tr><td>Chess</td><td>Board, Piece hierarchy with move validation, Move (command) for history, Game State</td><td>Check/checkmate, castling, undo</td></tr></table>
+<p>Do not over-engineer: three well-placed interfaces beat ten. Say out loud which pattern you are using and why.</p>`,
+template: `class Node:
+    __slots__ = ("k", "v", "prev", "next")
+    def __init__(self, k=None, v=None): self.k, self.v, self.prev, self.next = k, v, None, None
+
+class LRUCache:
+    def __init__(self, cap):
+        self.cap, self.map = cap, {}
+        self.head, self.tail = Node(), Node()        # sentinels
+        self.head.next, self.tail.prev = self.tail, self.head
+    def _unlink(self, n): n.prev.next, n.next.prev = n.next, n.prev
+    def _push_front(self, n):
+        n.next, n.prev = self.head.next, self.head
+        self.head.next.prev = n; self.head.next = n
+    def get(self, k):
+        if k not in self.map: return None
+        n = self.map[k]; self._unlink(n); self._push_front(n); return n.v
+    def put(self, k, v):
+        if k in self.map: n = self.map[k]; n.v = v; self._unlink(n); self._push_front(n); return
+        if len(self.map) == self.cap:
+            lru = self.tail.prev; self._unlink(lru); del self.map[lru.k]
+        n = Node(k, v); self.map[k] = n; self._push_front(n)
+
+class SplitStrategy(ABC):
+    @abstractmethod
+    def split(self, amount, users, meta) -> dict: ...
+class EqualSplit(SplitStrategy):
+    def split(self, amount, users, meta): return {u: amount / len(users) for u in users}
+
+class BookingState(Enum): LOCKED=1; CONFIRMED=2; EXPIRED=3; CANCELLED=4
+class SeatLock:
+    def __init__(self, seat, user, ttl_s): self.seat, self.user, self.expires = seat, user, time.time() + ttl_s
+    def valid(self): return time.time() < self.expires`,
+problems: [
+"LRU cache: implement it with sentinel nodes, test eviction order, then add TTL per key and discuss where you would add a lock. Follow-up you should be able to answer: how would LFU change the structure?",
+"Board games: one Game class that works for tic-tac-toe on N×N with a pluggable WinStrategy, then reuse Board/Player/Dice for Snake & Ladder with jumps as a map. Extension: undo the last move.",
+"Splitwise: users, groups, expenses with equal/exact/percent splits, balance sheet per pair, and settle-up. Extension: minimise the number of transactions to settle a group (greedy on max debtor/creditor).",
+"Movie ticket booking: cities, theatres, screens, shows, seats with type; search shows; lock seats for 5 minutes then confirm with payment; expiry releases seats. State machine for Booking; the invariant is one confirmed booking per seat per show.",
+"Ride hailing LLD: rider requests, matching strategy (nearest available driver), trip state machine (Requested → Accepted → Started → Completed / Cancelled), fare strategy, observers notifying rider and driver. Extension: surge multiplier as a decorator on the fare.",
+"Chess (stretch): Board, Piece subclasses with canMove(from, to, board), Move as a command with capture info, Game turn and state, check detection. Keep castling and en passant as named extensions; explain how the design admits them.",
+],
+traps: [
+"Spending 30 minutes on the diagram and shipping no code.",
+"Modelling seats without the lock-with-expiry step.",
+"Putting game rules inside Board instead of a strategy.",
+]},
+
+{ // W14
+concept: `<p>Concurrency questions test whether you can name the shared state, the invariant, and the primitive that protects it, then write code that does not deadlock. Most LLD interviews include at least one "make it thread-safe" follow-up.</p>
+<h4>Primitives</h4>
+<table><tr><th>Primitive</th><th>Use</th></tr>
+<tr><td>Mutex / lock</td><td>One thread in the critical section. Hold it briefly; never call out to unknown code while holding it.</td></tr>
+<tr><td>Read–write lock</td><td>Many readers or one writer. Wins when reads dominate; beware writer starvation.</td></tr>
+<tr><td>Semaphore</td><td>N permits (connection pool, bounded parallelism).</td></tr>
+<tr><td>Condition variable</td><td>Wait until a predicate holds; always re-check in a loop (spurious wakeups).</td></tr>
+<tr><td>Atomics / CAS</td><td>Lock-free counters and flags; compare-and-swap loops.</td></tr>
+<tr><td>Thread pool / executor</td><td>Bound the number of threads; queue the work.</td></tr></table>
+<h4>Rules that prevent bugs</h4>
+<p>Acquire locks in a fixed global order (deadlock prevention). Prefer immutable objects and message passing where you can. Use try/finally (or with-blocks) so locks are always released. Check-then-act must happen under the same lock (the double-checked singleton bug). Time-based expiry needs either a background sweeper or lazy expiry on access; say which.</p>
+<h4>Classic shapes</h4>
+<p><b>Bounded blocking queue</b>: one lock, two conditions (not_full, not_empty). <b>Connection pool</b>: semaphore for permits plus a lock-protected free list. <b>Thread-safe LRU</b>: a single lock is fine at first; shard the cache by key hash to reduce contention. <b>Token bucket</b>: lock around refill-then-consume, or CAS on a packed (tokens, timestamp).</p>`,
+template: `import threading, time, collections
+
+class BoundedQueue:
+    def __init__(self, cap):
+        self.cap, self.q = cap, collections.deque()
+        self.lock = threading.Lock()
+        self.not_full = threading.Condition(self.lock)
+        self.not_empty = threading.Condition(self.lock)
+    def put(self, x):
+        with self.not_full:
+            while len(self.q) >= self.cap: self.not_full.wait()     # loop, not if
+            self.q.append(x); self.not_empty.notify()
+    def get(self):
+        with self.not_empty:
+            while not self.q: self.not_empty.wait()
+            x = self.q.popleft(); self.not_full.notify(); return x
+
+class TokenBucket:
+    def __init__(self, rate, cap):
+        self.rate, self.cap, self.tokens, self.ts = rate, cap, cap, time.monotonic()
+        self.lock = threading.Lock()
+    def allow(self, n=1):
+        with self.lock:
+            now = time.monotonic()
+            self.tokens = min(self.cap, self.tokens + (now - self.ts) * self.rate); self.ts = now
+            if self.tokens >= n: self.tokens -= n; return True
+            return False
+
+class ConnectionPool:
+    def __init__(self, make, size):
+        self.free, self.sem, self.lock = [make() for _ in range(size)], threading.Semaphore(size), threading.Lock()
+    def acquire(self, timeout=None):
+        if not self.sem.acquire(timeout=timeout): raise TimeoutError()
+        with self.lock: return self.free.pop()
+    def release(self, c):
+        with self.lock: self.free.append(c)
+        self.sem.release()`,
+problems: [
+"Primitives: write one tiny program per primitive that shows the bug without it (race on a counter, lost wakeup, deadlock from lock ordering). Fix each. Explain why a condition wait must be in a while loop.",
+"Producer–consumer: bounded blocking queue with two conditions; run 4 producers and 4 consumers and verify no item is lost or duplicated. Extension: a poison pill for shutdown, and a timeout on put.",
+"Read–write lock and thread-safe LRU: implement an RW lock with writer preference, then wrap the week-13 LRU. Measure contention with 16 reader threads; then shard by key hash and measure again.",
+"Connection pool: semaphore for permits, lock-protected free list, acquire with timeout, release, health check on return, and a max-idle eviction. What happens when a caller forgets to release? Add a context manager.",
+"In-memory KV with TTL: get/set/delete with per-key expiry; lazy expiry on read plus a background sweeper thread using a min-heap of (expires_at, key); a lock strategy that does not block reads during sweeps.",
+"Token bucket class and thread-safe singleton: bucket per key in a map (what protects the map?), refill on demand, and a CAS-based version for a single hot key. Then the double-checked-locking singleton and why the naive version is wrong.",
+],
+traps: [
+"if instead of while around a condition wait.",
+"Holding a lock while doing I/O or calling a callback.",
+"Two locks acquired in different orders in two methods.",
+]},
+
+{ // W15
+concept: `<p>From here on every session is a full 45-minute design. This week's systems have reads 10–1000× writes, so the whole design is: <b>generate once, serve many</b>. Caches, CDNs, read replicas and precomputed views do the work; the write path is simple.</p>
+<h4>Common skeleton</h4>
+<p>Client → CDN (static, media) → LB → stateless API → cache (Redis) → primary DB with read replicas; media in object storage; async pipeline for anything derived (thumbnails, feed fan-out, search index).</p>
+<h4>Decisions you will be asked to defend</h4>
+<table><tr><th>System</th><th>The decision</th></tr>
+<tr><td>URL shortener</td><td>Key generation: base62 of a counter (predictable, needs a coordinated counter or ranges), hash and truncate (collisions to check), or a pre-generated key service. 301 vs 302 (analytics).</td></tr>
+<tr><td>Pastebin</td><td>Metadata in DB, blob in object storage; expiry cleanup; abuse and size limits.</td></tr>
+<tr><td>Instagram</td><td>Upload path via pre-signed URL; async thumbnailing; feed by fan-out; CDN for all media.</td></tr>
+<tr><td>News feed</td><td>Fan-out on write (precompute feeds; celebrity problem) vs fan-out on read (merge at request time; slow) vs hybrid (push for normal users, pull for celebrities).</td></tr>
+<tr><td>Yelp</td><td>Geo index (geohash or quadtree) to find nearby businesses; business data cached heavily; reviews eventually consistent.</td></tr>
+<tr><td>Dropbox</td><td>Chunking and content hashing for dedupe and delta sync; metadata service; sync protocol with long polling; conflict copies.</td></tr></table>
+<h4>The numbers that matter</h4>
+<p>Read QPS and cache size (hot 20% of daily reads). Media bandwidth (this decides the CDN). Storage growth per year including replicas. State them before the first box.</p>`,
+template: `SKELETON       client -> CDN -> LB -> API (stateless) -> Redis -> DB primary + replicas
+               media -> object store via pre-signed URL; async workers for derived data
+SHORTENER      100M/mo -> 40 wps, 4k rps reads; 7 chars base62 = 3.5e12 keys; 302 if analytics
+FEED           hybrid fan-out: push to followers' feed lists (Redis) for < 10k followers; pull for celebs; merge at read
+               feed list = last N post ids; hydrate posts from cache
+MEDIA          pre-signed upload -> queue -> resize/transcode -> CDN; DB stores object keys only
+GEO            geohash prefix (6 chars ~ 1km) in DB index or Redis GEO; query neighbours; cache by cell
+SYNC           file -> 4MB chunks -> hash -> upload missing only; metadata versioned; notify via long poll
+DEEP DIVES     cache invalidation | hot user | feed consistency | media pipeline failure`,
+problems: [
+"URL shortener (full): requirements, numbers, API, key generation choice with its trade-off, DB schema, cache for hot links, redirect semantics, expiry, analytics as async events. Deep dive: how keys stay unique across many app servers.",
+"Pastebin: like the shortener plus large content in object storage, expiry cleanup job, private/public pastes, and syntax-highlight rendering cached. Deep dive: cleaning up expired blobs without scanning everything.",
+"Instagram: upload pipeline (pre-signed URL, queue, thumbnails), feed (start with fan-out on write), likes and comments counters (approximate, eventually consistent), CDN. Deep dive: the media pipeline and what happens if resizing fails.",
+"News feed: implement the hybrid fan-out decision with numbers (average 200 followers, celebs with 10M). Design the feed storage in Redis, ranking hook, pagination with cursors, and deletion of a post already fanned out.",
+"Yelp: business search by location and category, geohash or quadtree index, ranking by distance and rating, caching by geo cell, review write path. Deep dive: the geo index and updating it when a business moves.",
+"Dropbox (stretch): client chunking and hashing, metadata service with file versions, block store, sync notification via long polling, conflict handling, sharing and permissions. Deep dive: delta sync and dedupe.",
+],
+traps: [
+"Fan-out on write for every user, including the one with 50M followers.",
+"Storing media bytes in the database.",
+"Forgetting that a deleted post must be removed from cached feeds.",
+]},
+
+{ // W16
+concept: `<p>These systems are judged on delivery latency and write throughput. The tools are <b>persistent connections</b> (WebSockets), <b>queues</b> to absorb writes, <b>idempotent writes</b> for retries, and <b>eventual consistency</b> everywhere it is acceptable.</p>
+<h4>Connections are state</h4>
+<p>A WebSocket server holds thousands of open connections. To deliver a message to user B you need to know which server B is connected to: a <b>connection registry</b> (user → server) in Redis, plus a pub/sub channel per server so any node can hand off a message. Presence is the same registry with heartbeats and TTLs.</p>
+<h4>Chat specifics</h4>
+<p>Message IDs must be ordered per conversation (server-assigned sequence per chat, not client clocks). Store messages in a wide-column store keyed by (chat_id, message_id) for cheap range reads. Group chat is fan-out to N members; large groups use a pull model. Offline users get messages on reconnect via "give me everything after my last seen ID", plus a push notification.</p>
+<h4>Twitter-scale writes</h4>
+<p>Tweets are the write; timelines are the expensive read. Fan-out through a queue to followers' timeline caches, with the hybrid rule for celebrities. Trending topics come from a streaming pipeline: count hashtags in sliding windows per region, approximate with count-min sketch, top-k by heap.</p>
+<h4>Monitoring and collaboration</h4>
+<p>A metrics system ingests millions of points per second: agents push to a queue, a time-series store partitions by metric and time, queries aggregate, alerting evaluates rules on a schedule. Collaborative editing needs <b>operational transformation</b> (server rewrites concurrent ops) or <b>CRDTs</b> (ops commute by construction); either way, a per-document sequence and a WebSocket fan-out to collaborators.</p>`,
+template: `CONNECTION     WS gateway nodes; registry user -> node (Redis, TTL heartbeat); pubsub channel per node
+SEND           client -> WS node -> chat service -> assign seq per chat -> store (chat_id, seq) -> publish to member nodes
+OFFLINE        on reconnect: fetch seq > last_seen; push notification via APNs/FCM if no connection
+STORE          wide-column keyed (chat_id, seq desc) for last-N reads; Cassandra/HBase; media via object store
+GROUP          <= 500 members: fan-out on send | large: pull on open
+ORDER          server seq per chat, not client time; dedupe by client msg id (idempotent send)
+TIMELINE       tweet -> queue -> fan-out workers -> timeline caches; celeb pull at read; trending via stream + count-min sketch
+METRICS        agent -> Kafka -> TSDB (partition metric,time) -> downsample; alert rules evaluated every N s
+COLLAB         doc seq + OT or CRDT; client sends ops with base version; server orders, broadcasts, persists snapshot every N ops`,
+problems: [
+"Chat: requirements (1:1, groups, online status, delivery receipts, 50M DAU), estimation, WS gateways with registry, message flow with sequence numbers, storage schema, offline delivery, push. Deep dive: how a message reaches a user on another gateway node and what happens if that node dies mid-delivery.",
+"Notification and presence: heartbeats with TTL for presence, fan-out of status changes only to online friends, throttling, and a notification service reused from week 7 with per-user preferences and quiet hours. Deep dive: presence at 100M users without a storm on reconnects.",
+"Twitter: tweet write path, hybrid timeline fan-out, timeline cache structure, search indexing async, trending topics pipeline with sliding windows. Deep dive: trending with approximate counting and per-region top-k.",
+"Live comments: 1M viewers on one stream, comments at 10k/s; fan-out via pub/sub partitioned by stream, sampling or rate limiting per client, ordering by server time, moderation hook. Deep dive: keeping fan-out cost sub-linear per viewer.",
+"Metrics and monitoring: ingestion at 1M points/s, TSDB layout, downsampling, query API for dashboards, alert evaluation and dedup, retention tiers. Deep dive: the write path and how you avoid losing points during a store outage.",
+"Google Docs (stretch): document model, ops with versions, OT vs CRDT choice and why, WebSocket session per doc, persistence and snapshots, cursor presence, offline edits merging on reconnect. Deep dive: conflict resolution on one concrete example.",
+],
+traps: [
+"Ordering messages by client timestamps.",
+"Fan-out on write to a 100k-member group.",
+"Treating WebSocket nodes as interchangeable without a registry.",
+]},
+
+{ // W17
+concept: `<p>Location problems add two ingredients: <b>things move</b> (drivers update every few seconds) and <b>queries are spatial</b> (nearest N within radius). Marketplaces add <b>matching</b> and the constraint that a resource (seat, driver, table) is allocated exactly once.</p>
+<h4>Spatial indexing</h4>
+<table><tr><th>Technique</th><th>How it works</th><th>Use</th></tr>
+<tr><td>Geohash</td><td>Interleave lat/lng bits into a string; shared prefix ≈ nearby cell; neighbours need a 3×3 check</td><td>Redis GEO, DB index on prefix, simple sharding by cell</td></tr>
+<tr><td>Quadtree</td><td>Recursively split space into 4 until each leaf has ≤ k points</td><td>Uneven density (cities vs deserts), in-memory</td></tr>
+<tr><td>S2 / H3</td><td>Hierarchical cells on a sphere, no edge problems</td><td>Production ride-hailing and maps</td></tr></table>
+<h4>Moving objects</h4>
+<p>Driver locations go to an in-memory geo index (Redis GEO per city) with TTL, not to the main database; only trip start/end points are durable. Match by querying nearby cells, filtering by availability, ranking by ETA. The location write rate is the number you must state: 1M drivers × every 4 s = 250k writes/s, sharded by city.</p>
+<h4>Exactly-once allocation</h4>
+<p>Booking a seat or assigning a driver is the consistency hotspot. Use a short lock with expiry (seat held 5 minutes), a database uniqueness constraint or conditional write for the confirm step, and idempotency keys so client retries do not double-book. For a matching engine, one single-threaded sequencer per instrument gives order and speed; replicate its log for durability.</p>
+<h4>Routing and ETA</h4>
+<p>Maps are tiles pre-rendered at zoom levels and served from a CDN. Routing runs on a road graph with contraction hierarchies or A*; ETAs combine historical speeds with live traffic per road segment.</p>`,
+template: `GEO INDEX      geohash 6 (~1.2km) / quadtree for uneven density / S2 for production; query 3x3 neighbour cells
+DRIVERS        location every 4s -> WS/UDP -> Redis GEO per city (TTL 10s); durable only at trip events
+MATCH          nearby cells -> available filter -> rank by ETA -> offer to driver (timeout) -> accept (CAS on trip)
+ORDER FLOW     order state machine; payment authorise then capture; dispatch to nearest kitchen/rider; ETA updates via push
+NO DOUBLE BOOK hold with TTL (Redis) -> confirm with DB unique (show_id, seat_id) or conditional write; idempotency key
+MAPS           tiles at zoom levels on CDN; road graph sharded by region; A* / contraction hierarchies; live traffic per segment
+EXCHANGE       one sequencer per symbol (single thread, in memory, order book = two sorted price levels); replicated log; market data fan-out`,
+problems: [
+"Location indexing: implement geohash encode/decode and a neighbours function; then a quadtree with insert and range query. Compare their behaviour on a dataset with one dense city and sparse countryside.",
+"Uber: rider request, driver location ingestion at 250k writes/s, geo index per city, matching flow with offer timeout, trip state machine, fare, ETA. Deep dive: matching without assigning one driver to two riders.",
+"Food delivery: restaurants and menus (read-heavy, cached), order placement with payment authorisation, dispatch of riders (geo), order tracking with live ETA via push. Deep dive: order state consistency across order, payment and dispatch services (saga from week 8).",
+"Google Maps: tile serving, road graph storage and sharding, routing algorithm choice, ETA from historical and live traffic, navigation updates. Deep dive: routing across shard boundaries.",
+"Hotel or ticket booking at scale: search (cached), hold with TTL, confirm with a uniqueness guarantee, idempotent payment, waitlist. Deep dive: prove there is no double booking under concurrent confirms and a retried request.",
+"Stock exchange (stretch): order entry gateway, risk checks, single-threaded matching engine per symbol with an in-memory order book, sequenced event log for durability and replay, market data fan-out, latency budget in microseconds. Deep dive: the order book data structure and failover.",
+],
+traps: [
+"Writing every driver location update to the primary database.",
+"Ignoring the neighbour-cell problem at geohash boundaries.",
+"Confirming a booking with a cache check instead of a database constraint.",
+]},
+
+{ // W18
+concept: `<p>Data-intensive systems move and transform large volumes: crawling the web, transcoding video, aggregating billions of click events, processing payments with zero loss. The design vocabulary is <b>pipelines</b>: stages connected by queues, each stage partitioned, idempotent and checkpointed so failure means retry, never corruption.</p>
+<h4>Pipeline principles</h4>
+<ol><li>Every stage reads from a durable queue and writes to a durable store or the next queue; nothing is held only in memory.</li>
+<li>Partition by a key that balances load and preserves the ordering you need.</li>
+<li>Make each stage idempotent (dedupe by event ID, upserts) so at-least-once delivery is safe.</li>
+<li>Checkpoint progress (offsets, watermarks) so restarts resume rather than replay everything.</li>
+<li>Separate <b>stream</b> (seconds, approximate, for dashboards) from <b>batch</b> (hours, exact, for billing) and reconcile.</li></ol>
+<h4>System-specific anchors</h4>
+<table><tr><th>System</th><th>Anchor</th></tr>
+<tr><td>Web crawler</td><td>URL frontier with politeness (per-host queues, delay), dedupe by URL and by content hash (simhash), robots.txt, priority, DNS cache, storage of pages in object store.</td></tr>
+<tr><td>YouTube</td><td>Upload → object store → transcoding DAG (split into segments, encode renditions in parallel, stitch) → CDN; adaptive bitrate streaming (HLS/DASH); metadata in DB; view counts approximate.</td></tr>
+<tr><td>Ad click aggregation</td><td>Events to Kafka → stream aggregator (windowed counts per ad, exactly-once via idempotent sinks) → OLAP store; batch recount from raw logs; late events and watermarks.</td></tr>
+<tr><td>Logging pipeline</td><td>Agents → collector → Kafka → indexer (Elasticsearch) and cold storage (object store, Parquet); retention tiers; sampling under overload.</td></tr>
+<tr><td>Payments</td><td>Idempotency keys end to end, ledger with double-entry and append-only entries, PSP integration with retries and webhooks, reconciliation job against PSP reports, exactly-once via idempotent writes.</td></tr>
+<tr><td>Recommendations</td><td>Event collection → feature pipeline (batch) → candidate generation → ranking model served online with a feature store; offline evaluation.</td></tr></table>`,
+template: `PIPELINE       source -> queue -> stage (partitioned, idempotent, checkpointed) -> store/queue -> ...
+STREAM+BATCH   stream for fast approximate; batch from raw logs for exact; reconcile and correct
+CRAWLER        frontier (priority + per-host politeness queues) -> fetcher (DNS cache, robots) -> parser -> dedupe (URL set, simhash) -> store
+VIDEO          upload -> object store -> DAG: split segments -> encode renditions parallel -> package HLS -> CDN; status via DB
+CLICKS         click -> Kafka (key ad_id) -> windowed count (1 min) -> idempotent sink; watermark for late events; batch recompute nightly
+LOGS           agent -> collector -> Kafka -> ES (hot, 7d) + object store parquet (cold); sample on overload
+PAYMENTS       idempotency key on every call; ledger = append-only double entry; PSP webhook -> state machine; reconciliation job
+RECSYS         events -> feature store (batch + streaming) -> candidates (ANN) -> ranker online (< 100 ms) -> log for training`,
+problems: [
+"Web crawler: requirements (1B pages/month, politeness, freshness), frontier design, dedupe, robots handling, distributed fetchers, storage. Deep dive: the frontier with priority and per-host delay at scale, and how to avoid crawler traps.",
+"YouTube: upload and transcoding DAG, storage tiers, CDN and adaptive streaming, metadata and search, view counting. Deep dive: the transcoding pipeline with parallel segments, failure retry, and cost.",
+"Ad click aggregation: exact requirements (counts per ad per minute, top 100 ads per hour, late events, billing accuracy), Kafka partitioning, stream aggregation with windows and watermarks, idempotent sink, batch reconciliation. Deep dive: exactly-once counting.",
+"Logging and analytics: agents, collectors, Kafka, indexing into Elasticsearch, cold storage in Parquet, query paths for both, retention, overload behaviour. Deep dive: keeping ingestion alive when Elasticsearch is slow.",
+"Payment system: pay-in and pay-out flows, idempotency keys, ledger design (double entry, immutable), PSP retries and webhooks, state machine, reconciliation. Deep dive: how a client retry after a timeout never double-charges.",
+"Recommendation pipeline (stretch): event ingestion, feature computation batch and streaming, feature store, candidate generation with approximate nearest neighbours, online ranking under a latency budget, A/B logging. Deep dive: training/serving skew and the feature store.",
+],
+traps: [
+"A stage that holds work only in memory.",
+"Counting with at-least-once delivery and no dedupe.",
+"A payment flow with retries but no idempotency key.",
+]},
+
+{ // W19
+concept: `<p>This week the prompt is the infrastructure component itself. The interviewer expects you to reason about <b>replication, failure detection, recovery, and consistency</b> explicitly, because there is no application logic to hide behind.</p>
+<h4>Questions every infra design must answer</h4>
+<ol><li>Where does the data live and how many copies? Sync or async replication?</li>
+<li>How is failure detected (heartbeats, gossip, lease expiry) and how long until recovery?</li>
+<li>What is the consistency model, stated precisely (linearizable, sequential, eventual)?</li>
+<li>What is the durability guarantee and its math (replication factor, erasure code, fsync)?</li>
+<li>How does it scale: what is partitioned, and what is the coordination bottleneck?</li></ol>
+<h4>Anchors</h4>
+<table><tr><th>System</th><th>Anchor</th></tr>
+<tr><td>Distributed cache</td><td>Consistent hashing, replication of hot keys, cluster membership via gossip, client-side routing, eviction and memory limits per node.</td></tr>
+<tr><td>Coordination service</td><td>Small replicated state machine (Raft/ZAB), hierarchical namespace, ephemeral nodes with sessions, watches; used for locks, leader election, config.</td></tr>
+<tr><td>Blob storage</td><td>Metadata service partitioned by bucket; data chunks erasure-coded across racks; background repair; strong list-after-write.</td></tr>
+<tr><td>Email</td><td>SMTP ingestion, spam filtering pipeline, mailbox storage sharded by user, search index per user, attachments in object store, IMAP/API access.</td></tr>
+<tr><td>Distributed file system</td><td>Master with metadata (namespace, chunk locations) and chunk servers; large chunks (64 MB); replication and re-replication; leases for writes.</td></tr>
+<tr><td>Multi-region</td><td>Active-active with regional writes and async replication, conflict resolution per data type, global load balancing by latency, failover runbook, data residency.</td></tr></table>
+<p>Say the durability and availability numbers you are designing to (e.g. 99.99% availability = 52 minutes/year of downtime), then show the design meets them.</p>`,
+template: `CHECKLIST      copies? sync/async? failure detection? recovery time? consistency model? durability math? partition + coordination bottleneck?
+CACHE          consistent hash ring, RF=2 for hot keys, gossip membership, client routing, per-node LRU with memory cap
+COORD          Raft group of 5 -> tolerate 2; znodes with sessions + ephemeral; watches; keep state tiny (< GB)
+BLOB           metadata (bucket, key -> chunk ids) partitioned; data 6+3 erasure code across racks; repair queue; eleven nines
+EMAIL          SMTP in -> spam/virus -> mailbox store sharded by user -> per-user search index; attachments in object store; IMAP/HTTP out
+DFS            master metadata (in memory + op log) + chunk servers; 64MB chunks x3; lease per chunk for writes; re-replicate under RF
+MULTI-REGION   region-local writes; async cross-region replication; per-datatype conflict rule; GSLB; failover playbook; residency
+NUMBERS        99.9% = 8.7h/yr | 99.99% = 52m/yr | 99.999% = 5m/yr`,
+problems: [
+"Distributed cache revisited: add to week 5 a replication factor, membership with gossip and failure detection, client routing and rebalancing on node join, and memory limits. Deep dive: what a client sees during a node failure and rebalance.",
+"Coordination service: API (create, read, write, delete, watch, ephemeral nodes, sessions), Raft-replicated state, leader election and lock recipes built on it, watch delivery semantics. Deep dive: how a session expiry safely releases a lock.",
+"Blob storage revisited: durability math for eleven nines with erasure coding and repair time, metadata consistency for list-after-write, multipart uploads, versioning and lifecycle rules. Deep dive: the repair pipeline and its bandwidth.",
+"Email: receive path with spam filtering, mailbox storage and sharding, search index, attachments, send path with queues and retries, IMAP/HTTP access. Deep dive: per-user search index at 1B mailboxes.",
+"Distributed file system: master and chunk servers, metadata in memory with an operation log, read and write paths with leases, replication and re-replication, master failover. Deep dive: the write path with a primary replica and mutation order.",
+"Multi-region active-active (stretch): take the chat or booking system and run it in three regions: routing, replication, conflict rules per table, failover, and data residency. Deep dive: what happens to an in-flight booking when a region dies.",
+],
+traps: [
+"Claiming durability without stating replication or coding factor.",
+"A single master with no failover story.",
+"Active-active with no conflict resolution rule.",
+]},
+
+{ // W20
+concept: `<p>The final week is rehearsal under interview conditions. No topic label, a clock, and speaking out loud. Alternate HLD and LLD. Pick prompts you have not designed before, or take a done one and change two requirements.</p>
+<h4>Unseen prompt bank</h4>
+<p><b>HLD</b>: design a ticketing system for a concert with 1M people refreshing at once; an online code judge; a distributed job queue with priorities; a parking-garage network with real-time availability; a food-safety recall notification system; a leaderboard for a mobile game; a flash-sale checkout; a digital wallet.</p>
+<p><b>LLD</b>: a rate-limited API gateway class library; a hospital appointment scheduler; a meeting-room booking system; a file-system in memory with permissions; a card game engine (Uno); a stack-overflow clone (questions, answers, votes, badges); an ATM; a task scheduler with dependencies.</p>
+<h4>Scoring yourself (5 points each)</h4>
+<table><tr><th>Dimension</th><th>Full marks look like</th></tr>
+<tr><td>Requirements</td><td>Asked clarifying questions; explicit non-functional goals and out-of-scope</td></tr>
+<tr><td>Estimation</td><td>QPS, storage, bandwidth; a number changed a decision</td></tr>
+<tr><td>Design</td><td>Clear boxes, API and data model before deep dive; every component justified</td></tr>
+<tr><td>Deep dive</td><td>Two hard parts with trade-offs stated as "X because Y, at the cost of Z"</td></tr>
+<tr><td>Failure and scale</td><td>Named single points of failure, bottleneck at 10×, what you would monitor</td></tr>
+<tr><td>Communication</td><td>Talked while drawing; checked in with the interviewer; managed the clock</td></tr></table>
+<p>Below 22/30, log what went wrong and revisit that week's lesson. Above 26, change the prompt's constraints and go again.</p>`,
+template: `T+0    "Let me confirm the requirements" -> 3 functional, 3 non-functional, 1 out-of-scope
+T+5    numbers: DAU, QPS r/w, storage/yr, bandwidth, cache size -> "so we need ___"
+T+10   API (2-3 endpoints) -> data model (tables/keys, partition key) -> boxes: client, LB, service, cache, DB, queue, workers
+T+20   "The two hardest parts are ___ and ___; let's go into ___ first" -> trade-off sentence per decision
+T+40   failures: SPOFs, what breaks at 10x, what I'd monitor; "if I had more time I'd ___"
+LLD    T+0 clarify | T+5 use cases | T+10 classes + interfaces on board | T+15 code core | T+45 extension | T+55 concurrency question`,
+problems: [
+"HLD mock #1: pick an unseen prompt, set a 45-minute timer, record audio. Score yourself on the six dimensions; write the two weakest and the lesson week they map to.",
+"LLD mock #1: unseen prompt, 60 minutes, code must run. Extension and a thread-safety question at the end. Score and log.",
+"HLD mock #2: a done design with two changed constraints (e.g. Twitter but every user is a celebrity; chat but messages must be end-to-end encrypted). The point is adapting, not recalling.",
+"LLD mock #2: a done problem with a new requirement added at minute 30 (undo, multi-user, persistence). Note how many classes you had to edit.",
+"HLD mock #3 with a peer or recorded and reviewed the next day. Ask the reviewer for the one question they would have pressed on. Answer it in writing.",
+"LLD mock #3, same format. Then write the final pattern card: your personal list of the 10 decisions you now make automatically.",
+],
+traps: [
+"Recalling a memorised diagram instead of deriving it from the requirements.",
+"Silence while drawing.",
+"Skipping the wrap-up because time ran out; keep 5 minutes no matter what.",
+]},
+];
+
+
+let state = {start:"2026-09-28", days:{}, templates:{}, view:null};
+let db=null, doc=null, dl=null, saveTimer=null, ltab="concept";
+const $=s=>document.querySelector(s);
+const key=(w,d)=>`w${w+1}d${d+1}`;
+const rec=(w,d)=>state.days[key(w,d)]||{};
+const isHLD=(w,d)=>{const k=PLAN[w].p[d][0]; return k==="D"||k==="E"||(k==="M"&&d%2===0)||(k==="R"&&PLAN[w].tag!=="lld");};
+const isLLD=(w,d)=>{const k=PLAN[w].p[d][0]; return k==="C"||(k==="M"&&d%2===1)||(k==="R"&&PLAN[w].tag==="lld");};
+
+function currentWeek(){
+  const s=new Date(state.start+"T00:00:00"), n=new Date(); n.setHours(0,0,0,0);
+  const diff=Math.floor((n-s)/864e5); if(diff<0) return {w:0,d:-1};
+  return {w:Math.min(19,Math.floor(diff/7)), d:Math.min(5,diff%7)};
+}
+function counts(){
+  let done=0,un=0,rv=0,h=0,l=0,ht=0,lt=0;
+  for(let w=0;w<20;w++)for(let d=0;d<6;d++){ const r=rec(w,d); if(isHLD(w,d)){ht++; if(r.done)h++;} if(isLLD(w,d)){lt++; if(r.done)l++;} if(r.done)done++; if(r.unaided)un++; if(r.revisit)rv++; }
+  return {done,un,rv,h,l,ht,lt};
+}
+
+function renderMatrix(){
+  const cur=currentWeek(); const g=$("#mgrid"); g.innerHTML="";
+  g.appendChild(el("div","lbl",""));
+  PHASES.forEach(([n,span,cls])=>{ const p=el("div","ph "+cls,n); p.style.setProperty("--span",span); g.appendChild(p); });
+  g.appendChild(el("div","lbl",""));
+  for(let w=0;w<20;w++){ const b=el("button","wk"+(w===state.view?" cur":""),"W"+(w+1)); b.onclick=()=>{state.view=w;render();}; g.appendChild(b); }
+  for(let d=0;d<6;d++){
+    g.appendChild(el("div","lbl","Day "+(d+1)));
+    for(let w=0;w<20;w++){
+      const r=rec(w,d); const b=el("button","dot"+(r.done?" done":"")+(r.unaided?" unaided":"")+(r.revisit&&!r.done?" revisit":"")+(cur.w===w&&cur.d===d?" today":""));
+      b.title=`Week ${w+1}, Day ${d+1}: ${PLAN[w].p[d][1].replace("*","")}`; b.setAttribute("aria-label",b.title);
+      b.onclick=()=>{state.view=w;render();document.getElementById("day"+d)?.scrollIntoView({behavior:"smooth",block:"center"});};
+      g.appendChild(b);
+    }
+  }
+  const c=counts(); $("#doneCount").textContent=c.done; $("#unaidedCount").textContent=c.un; $("#revisitCount").textContent=c.rv;
+  $("#hldCount").textContent=c.h; $("#lldCount").textContent=c.l; $("#hldTotal").textContent=c.ht; $("#lldTotal").textContent=c.lt;
+  $("#bar").style.width=(c.done/120*100)+"%";
+}
+
+function renderLesson(){
+  const w=state.view, L=LESSONS[w], wk=PLAN[w]; const c=$("#lcard");
+  const probs=L.problems.map((t,i)=>{const [a,...b]=t.split(": ");return `<li><b>Day ${i+1} — ${esc(a)}</b>: ${b.join(": ")}</li>`;}).join("");
+  const traps=L.traps.map(t=>`<li>${t}</li>`).join("");
+  c.innerHTML=`<details open><summary>Week ${w+1} lesson: ${esc(wk.t)}</summary>
+    <div class="ltabs">
+      <button class="ltab ${ltab==="concept"?"on":""}" data-t="concept">Concept</button>
+      <button class="ltab ${ltab==="template"?"on":""}" data-t="template">${wk.tag==="lld"?"Code skeleton":"Reference card"}</button>
+      <button class="ltab ${ltab==="problems"?"on":""}" data-t="problems">How to approach each session</button>
+    </div>
+    <div class="lbody">
+      <div class="lpane ${ltab==="concept"?"on":""}">${L.concept}</div>
+      <div class="lpane ${ltab==="template"?"on":""}"><p>${wk.tag==="lld"?"Type this out once, then close it and reproduce the shape from memory before Day 7.":"Copy this onto an index card. Before Day 7, rewrite it from memory in your own words."}</p><pre><code>${esc(L.template)}</code></pre></div>
+      <div class="lpane ${ltab==="problems"?"on":""}"><ol class="probs">${probs}</ol><div class="traps"><b>Traps this week</b><ul>${traps}</ul></div></div>
+    </div></details>`;
+  c.querySelectorAll(".ltab").forEach(b=>b.onclick=()=>{ltab=b.dataset.t;renderLesson();});
+}
+
+function slink(name){ return "https://www.google.com/search?q="+encodeURIComponent("system design "+name.replace("*","")); }
+
+function renderWeek(){
+  const w=state.view, wk=PLAN[w]; const a=$("#wcard");
+  a.innerHTML=`<div class="phase">${wk.ph} · Week ${w+1} of 20<span class="tag ${wk.tag}">${wk.tag==="hld"?"HLD":wk.tag==="lld"?"LLD":"HLD + LLD"}</span></div><h2>${wk.t}</h2>
+  <div class="tell"><b>The tell</b>${wk.tell}</div>
+  <label class="small" for="tpl">${wk.tag==="lld"?"Pattern card (write it on Day 7: when to reach for it, the class shape, one trade-off)":"Pattern card (write it on Day 7: when to reach for it, the components, the trade-off you'd say out loud)"}</label>
+  <textarea id="tpl" placeholder="Use when… Components… Trade-off… Numbers to remember…">${esc(state.templates["w"+(w+1)]||"")}</textarea>
+  <div class="navrow"><button class="btn" id="prevW" ${w===0?"disabled":""}>Previous week</button><button class="btn" id="nextW" ${w===19?"disabled":""}>Next week</button></div>`;
+  $("#tpl").oninput=e=>{state.templates["w"+(w+1)]=e.target.value; save();};
+  $("#prevW").onclick=()=>{state.view=w-1;render();};
+  $("#nextW").onclick=()=>{state.view=w+1;render();};
+
+  const c=$("#dcard"); c.innerHTML="";
+  wk.p.forEach(([kind,name],d)=>{
+    const r=rec(w,d); const stretch=name.endsWith("*");
+    const row=el("div","day"+(r.done?" done":"")+(r.open?" open":"")); row.id="day"+d;
+    const prompt = kind==="C" ? "Use cases → classes → interfaces. Which pattern? What extension did you test?"
+                 : kind==="D"||kind==="M" ? "Key requirement · Trade-off stated · Bottleneck · One thing you missed"
+                 : kind==="E" ? "Assumptions · Numbers · Which number drove the design?"
+                 : "What decision does this let me make? One sentence.";
+    row.innerHTML=`<button class="check" aria-label="Mark done">${r.done?"✓":""}</button>
+      <div><div class="dtop"><span class="dnum">Day ${d+1}</span><span class="kind ${kind}">${KIND[kind]}</span><span class="pname">${esc(name.replace("*",""))}</span>${stretch?'<span class="stretch">stretch</span>':""}
+        ${kind==="D"||kind==="C"?`<a class="slink" href="${slink(name)}" target="_blank" rel="noopener">references ↗</a>`:""}
+        <button class="pill ${r.unaided?"on":""}" data-k="unaided">Timed &amp; unaided</button>
+        <button class="pill warn ${r.revisit?"on":""}" data-k="revisit">Revisit in 7 days</button>
+        <button class="toggle">${r.open?"Hide log":"Log"}</button></div>
+        <div class="dlog">
+          <label class="small">${prompt}</label>
+          <textarea placeholder="${esc(prompt)}">${esc(r.note||"")}</textarea>
+        </div></div>`;
+    row.querySelector(".check").onclick=()=>set(w,d,{done:!r.done});
+    row.querySelectorAll(".pill").forEach(p=>p.onclick=()=>set(w,d,{[p.dataset.k]:!r[p.dataset.k]}));
+    row.querySelector(".toggle").onclick=()=>set(w,d,{open:!r.open},false);
+    row.querySelector("textarea").oninput=e=>set(w,d,{note:e.target.value},true,true);
+    c.appendChild(row);
+  });
+  const lo=Math.max(1,w-2), hi=Math.max(1,w-1);
+  const txt = wk.tag==="lld"
+    ? `Day 7 — review: re-implement this week's hardest problem from a blank file in 45 minutes, then write the pattern card on the left. Then re-explain one design from weeks ${lo}–${hi} out loud in 5 minutes.`
+    : `Day 7 — review: redo this week's hardest design cold on a whiteboard in 30 minutes, then write the pattern card on the left. Then re-explain one design from weeks ${lo}–${hi} out loud in 5 minutes, ending with its failure modes.`;
+  c.appendChild(el("div","sunday",txt));
+}
+
+function set(w,d,patch,persist=true,quiet=false){
+  const k=key(w,d); state.days[k]={...rec(w,d),...patch};
+  if(persist) save();
+  if(!quiet){ render(); }
+}
+function render(){ renderMatrix(); renderLesson(); renderWeek(); $("#startDate").value=state.start; }
+function el(tag,cls,txt){ const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e; }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function persisted(){ const {view,...rest}=state; const days={}; for(const k in rest.days){ const {open,...r}=rest.days[k]; if(Object.keys(r).length) days[k]=r; } return {...rest,days,updatedAt:new Date().toISOString()}; }
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    try{ localStorage.setItem("sd-tracker",JSON.stringify(persisted())); }catch(e){}
+    if(!doc) return;
+    $("#status").textContent="Saving…";
+    try{ await doc.set(persisted()); $("#status").textContent="Saved"; }
+    catch(e){ $("#status").textContent="Couldn't save (" + (e?.code||"error") + ")"; }
+  },500);
+}
+
+async function init(){
+  try{ const l=localStorage.getItem("sd-tracker"); if(l) state={...state,...JSON.parse(l)}; }catch(e){}
+  state.view=currentWeek().w;
+  render();
+  $("#startDate").onchange=e=>{ state.start=e.target.value; state.view=currentWeek().w; save(); render(); };
+
+  try{ db=await claude.use("db"); }catch(e){ db=null; }
+  if(db){
+    doc=db.doc("progress/main");
+    try{
+      const snap=await doc.get();
+      if(snap.exists){ const {view,...s}=snap.data(); state={...state,...s}; if(!state.days)state.days={}; if(!state.templates)state.templates={}; }
+      else await doc.set(persisted());
+      $("#status").textContent="Synced";
+    }catch(e){ $("#status").textContent="Offline (this browser only)"; doc=null; }
+  } else $("#status").textContent="Offline (this browser only)";
+  state.view=currentWeek().w; render();
+
+  try{ dl=await claude.use("downloads"); }catch(e){ dl=null; }
+  if(dl){ const b=$("#exportBtn"); b.hidden=false; b.onclick=async()=>{
+    try{ await dl.save({filename:"system-design-progress.json",data:JSON.stringify(persisted(),null,2)}); }catch(e){}
+  }; }
+}
+init();
+</script>
+</body>
+</html>
