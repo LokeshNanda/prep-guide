@@ -210,6 +210,23 @@ label.small{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 .sched.behind{background:var(--warn-soft)} .sched.behind b{color:var(--warn)}
 .sched .btn{margin-left:auto;padding:5px 11px;font-size:12.5px}
 .dot.done,.dot.revisit{border-color:transparent}
+
+/* Photos in the log */
+.photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.photos:empty{display:none}
+.photo{position:relative;margin:0;width:88px;height:88px;border-radius:8px;overflow:hidden;background:var(--bg);border:1px solid var(--line)}
+.photo img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.photo.missing{display:grid;place-items:center;font-size:11px;color:var(--ink2);text-align:center;padding:6px}
+.photo.missing img{display:none}
+.pdel{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:15px;line-height:1;cursor:pointer;padding:0}
+.photorow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.photorow .btn{padding:6px 12px;font-size:13px}
+.photorow .btn[disabled]{opacity:.6;cursor:progress}
+.phint{font-size:12px;color:var(--ink2)}
+#lightbox[hidden]{display:none}
+#lightbox{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.9);display:grid;place-items:center;padding:16px;cursor:zoom-out}
+#lightbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+@media (max-width:700px){ .photo{width:96px;height:96px} .pdel{width:32px;height:32px;font-size:18px} .photorow .btn{min-height:40px} }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-asm.js"></script>
 </head>
@@ -434,6 +451,8 @@ function renderWeek(){
           <div class="sol"><b style="font-size:13px">Reference solution</b><pre><code>${esc(P.sol)}</code></pre><div class="why">${P.approach}</div></div>
           <label class="small">What in the question pointed to the pattern? Grain? One mistake.</label>
           <textarea class="note" placeholder="Tell: …  Grain: one row per …  Mistake: …">${esc(r.note||"")}</textarea>
+          <div class="photos"></div>
+          <div class="photorow"><button class="btn pbtn" type="button">Add photo</button><span class="phint">Camera or gallery. Kept on this device and included in Export.</span></div>
         </div></div>`;
     const ta=row.querySelector(".sqlbox"), out=row.querySelector(".out"), verdict=row.querySelector(".verdict");
     const runIt=()=>{ if(!live){ renderResult(out,null,"SQL engine not loaded."); return; } try{ renderResult(out, runLive(ta.value)); }catch(e){ renderResult(out,null,e.message||String(e)); } renderSchema(); };
@@ -455,6 +474,7 @@ function renderWeek(){
     ta.oninput=()=>set(w,d,{sql:ta.value},true,true);
     wireEditor(ta, runIt);
     row.querySelector(".note").oninput=e=>set(w,d,{note:e.target.value},true,true);
+    wirePhotos(row,w,d);
     c.appendChild(row);
   });
   const s=el("div","sunday",`Day 7 — review: re-solve this week's two hardest questions cold with the solution hidden, then write or update the pattern template on the left. Also re-solve one question from week ${Math.max(1,w-1)} or ${Math.max(1,w-2)} against fresh data (Reset data first).`);
@@ -514,6 +534,91 @@ function shiftStart(){
 function dayTitle(w,d){ const raw=PLAN[w]&&PLAN[w].p[d]; return String(Array.isArray(raw)?raw[1]:(raw&&typeof raw==="object"?(raw.t||raw.name||""):(raw||""))).replace("*",""); }
 function writeToday(summary){ try{ localStorage.setItem(STORE_KEY+":today", JSON.stringify({...summary, date:new Date().toISOString().slice(0,10)})); }catch(e){} }
 
+// ---- Photos: stored in IndexedDB (localStorage is too small), referenced from state.days[k].imgs ----
+const PHOTO_MAX=1280, PHOTO_Q=0.82, PHOTO_LIMIT=6;
+let photoDB=null;
+function openPhotoDB(){
+  if(photoDB) return Promise.resolve(photoDB);
+  return new Promise((res,rej)=>{
+    if(!("indexedDB" in window)) return rej(new Error("IndexedDB unavailable"));
+    const q=indexedDB.open(STORE_KEY+"-photos",1);
+    q.onupgradeneeded=()=>q.result.createObjectStore("photos");
+    q.onsuccess=()=>{ photoDB=q.result; res(photoDB); };
+    q.onerror=()=>rej(q.error);
+  });
+}
+function photoReq(mode,fn){ return openPhotoDB().then(db=>new Promise((res,rej)=>{ const r=fn(db.transaction("photos",mode).objectStore("photos")); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); })); }
+const photoPut=(id,blob)=>photoReq("readwrite",st=>st.put(blob,id));
+const photoGet=id=>photoReq("readonly",st=>st.get(id));
+const photoDel=id=>photoReq("readwrite",st=>st.delete(id));
+async function shrinkImage(file){
+  let bmp;
+  try{ bmp=await createImageBitmap(file,{imageOrientation:"from-image"}); }
+  catch(e){ bmp=await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=URL.createObjectURL(file); }); }
+  const w=bmp.width||bmp.naturalWidth, h=bmp.height||bmp.naturalHeight, s=Math.min(1,PHOTO_MAX/Math.max(w,h));
+  const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(w*s)); c.height=Math.max(1,Math.round(h*s));
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+  if(bmp.close) bmp.close();
+  const blob=await new Promise(res=>c.toBlob(res,"image/jpeg",PHOTO_Q));
+  if(!blob) throw new Error("encode failed");
+  return blob;
+}
+async function addPhoto(w,d,file,row){
+  const imgs=rec(w,d).imgs||[];
+  if(imgs.length>=PHOTO_LIMIT){ alert("Up to "+PHOTO_LIMIT+" photos per day."); return; }
+  const btn=row.querySelector(".pbtn"); btn.disabled=true; btn.textContent="Saving\u2026";
+  const id=key(w,d)+"-"+Date.now().toString(36);
+  try{ const blob=await shrinkImage(file); await photoPut(id,blob); set(w,d,{imgs:[...imgs,{id,ts:Date.now()}]},true,true); }
+  catch(e){ alert("Couldn't save that photo in this browser."); }
+  btn.disabled=false; btn.textContent="Add photo";
+  renderPhotos(row,w,d); updateToggleLabel(row,w,d);
+}
+async function removePhoto(w,d,id,row){
+  if(!confirm("Remove this photo?")) return;
+  try{ await photoDel(id); }catch(e){}
+  set(w,d,{imgs:(rec(w,d).imgs||[]).filter(i=>i.id!==id)},true,true);
+  renderPhotos(row,w,d); updateToggleLabel(row,w,d);
+}
+function photoLabel(r){ const n=(r.imgs||[]).length; return n?" \u00b7 "+n+(n===1?" photo":" photos"):""; }
+function updateToggleLabel(row,w,d){ const t=row.querySelector(".toggle"); if(!t) return; const base=t.dataset.base||(t.dataset.base=t.textContent.trim()); t.textContent=base+photoLabel(rec(w,d)); }
+async function renderPhotos(row,w,d){
+  const box=row.querySelector(".photos"); if(!box) return;
+  (box._urls||[]).forEach(u=>URL.revokeObjectURL(u)); box._urls=[]; box.innerHTML="";
+  for(const im of (rec(w,d).imgs||[])){
+    const fig=el("figure","photo"); const img=document.createElement("img"); img.alt="Photo from log"; img.loading="lazy";
+    const del=el("button","pdel","\u00d7"); del.type="button"; del.setAttribute("aria-label","Remove photo"); del.onclick=e=>{ e.stopPropagation(); removePhoto(w,d,im.id,row); };
+    fig.append(img,del); box.appendChild(fig);
+    try{
+      const blob=await photoGet(im.id);
+      if(blob){ const url=URL.createObjectURL(blob); box._urls.push(url); img.src=url; img.onclick=()=>openLightbox(url); }
+      else { fig.classList.add("missing"); fig.append(el("span",null,"Not on this device")); }
+    }catch(e){ fig.classList.add("missing"); fig.append(el("span",null,"Unavailable")); }
+  }
+}
+function openLightbox(url){
+  let lb=document.getElementById("lightbox");
+  if(!lb){ lb=el("div"); lb.id="lightbox"; lb.setAttribute("role","dialog"); lb.setAttribute("aria-label","Photo"); lb.innerHTML='<img alt="Photo from log">'; lb.onclick=()=>{ lb.hidden=true; }; document.body.appendChild(lb); addEventListener("keydown",e=>{ if(e.key==="Escape") lb.hidden=true; }); }
+  lb.querySelector("img").src=url; lb.hidden=false;
+}
+function wirePhotos(row,w,d){
+  const btn=row.querySelector(".pbtn"); if(!btn) return;
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.hidden=true; row.appendChild(inp);
+  btn.onclick=()=>{ inp.value=""; inp.click(); };
+  inp.onchange=()=>{ if(inp.files&&inp.files[0]) addPhoto(w,d,inp.files[0],row); };
+  updateToggleLabel(row,w,d); renderPhotos(row,w,d);
+}
+function blobToDataURL(b){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>rej(fr.error); fr.readAsDataURL(b); }); }
+async function exportPhotos(){
+  const out={};
+  for(const k in state.days){ for(const im of (state.days[k].imgs||[])){ try{ const b=await photoGet(im.id); if(b) out[im.id]=await blobToDataURL(b); }catch(e){} } }
+  return out;
+}
+async function importPhotos(photos){
+  if(!photos||typeof photos!=="object") return 0; let n=0;
+  for(const id in photos){ try{ const b=await (await fetch(photos[id])).blob(); await photoPut(id,b); n++; }catch(e){} }
+  return n;
+}
+
 function renderJump(){
   const j=document.getElementById("jump"), t=document.getElementById("jumpText"); if(!j) return;
   const cur=currentWeek(); const wk=PLAN[cur.w]; const x=sched();
@@ -543,7 +648,7 @@ const TRACKER_ID="sql", EXPORT_NAME="sql-progress.json";
 function exportStamp(){ const d=new Date(), p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"-"+p(d.getHours())+p(d.getMinutes()); }
 function isMobile(){ const ua=navigator.userAgent||""; return /Android|iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints>1); }
 async function exportProgress(){
-  const data={tracker:TRACKER_ID, format:1, exportedAt:new Date().toISOString(), ...persisted()};
+  const data={tracker:TRACKER_ID, format:2, exportedAt:new Date().toISOString(), ...persisted(), photos:await exportPhotos()};
   const json=JSON.stringify(data,null,2), name=TRACKER_ID+"-progress-"+exportStamp()+".json", type="application/json";
   const done=n=>{ $("#status").textContent="Exported "+n; };
   // 1. Desktop Chrome / Edge: native Save As dialog. Pick any folder, including a Google Drive or iCloud Drive sync folder.
@@ -578,10 +683,11 @@ function importProgress(file){
     const count=d=>Object.values(d||{}).filter(r=>r&&r.done).length;
     const when=data.exportedAt||data.updatedAt, whenText=when?new Date(when).toLocaleString():"an unknown date";
     if(!confirm("Replace this browser's progress ("+count(state.days)+" done) with the file's progress ("+count(data.days)+" done, exported "+whenText+")?")) return;
-    const {tracker,format,exportedAt,view,...rest}=data;
+    const {tracker,format,exportedAt,view,photos,...rest}=data;
     state={...state,...rest}; if(!state.days)state.days={}; if(!state.templates)state.templates={};
     state.view=currentWeek().w; save(); render();
     $("#status").textContent="Imported "+file.name;
+    importPhotos(photos).then(n=>{ if(n) render(); });
   };
   reader.onerror=()=>alert("Couldn't read that file.");
   reader.readAsText(file);

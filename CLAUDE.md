@@ -33,8 +33,8 @@ icons/                      icon.svg is the source; the PNGs are rendered from i
 ## Structure inside each tracker (keep this order)
 
 1. `<head>`: meta, title, font link, `<style>` with tokens first, then component styles.
-2. `<body>`: header (title, `.sub` line, status, export button), progress matrix, lesson card,
-   week card + day card.
+2. `<body>`: nav, header (title, `.sub` line, status, export/import), progress matrix, lesson card,
+   week card + day card (each day: check, pills, log with note textarea and photos).
 3. `<script>`: `const PLAN = [...]` (the curriculum data), then `LESSONS`/other data arrays,
    then `let state = {start, days:{}, templates:{}, view}` and the logic.
 
@@ -81,6 +81,22 @@ transient fields (`view`, `open`, and in SQL `hint`/`sol`) before saving.
   its `theme-color`, and the `--sql` tokens on the home page. DSA stays blue.
 - `--dotline` is the hairline on empty matrix dots (`#8F98A6` light, `#66727F` dark); done and
   revisit dots clear it.
+
+## Photos in the log
+
+- Each day's log has **Add photo** (`<input type="file" accept="image/*">`, no `capture` so phones
+  offer camera or gallery). `shrinkImage()` resizes to max 1280px JPEG q0.82 via canvas.
+- Blobs live in IndexedDB `<storage key>-photos`, store `photos`, keyed by
+  `w{w}d{d}-<base36 time>`. State only holds `days[k].imgs = [{id, ts}]`, so `localStorage`
+  stays small. `PHOTO_LIMIT` is 6 per day. `renderPhotos()` draws thumbnails (object URLs,
+  revoked on re-render) with a remove button and a lightbox (`#lightbox`, `[hidden]` rule needed
+  because the element has `display:grid`).
+- `updateToggleLabel()` appends " · N photos" to whatever the tracker's own toggle text is
+  (DSA/PySpark/SD/Kafka say Log, SQL says Open).
+- Export `format:2` adds `photos: {id: dataURL}`; `importPhotos()` writes them back to IndexedDB
+  after the state import. Old `format:1` files import fine (no photos).
+- Photos are per device until exported; a thumbnail whose blob is missing shows "Not on this
+  device".
 
 ## Saving, export and import
 

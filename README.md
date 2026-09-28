@@ -16,13 +16,14 @@ Live: https://lokeshnanda.com/prep-guide/
 
 Open `index.html` (or the live URL) and pick a tracker. Each one shows a week-by-day matrix,
 today's lesson, and a day card where you mark the session done, unaided, or to revisit and
-leave a note. Set the start date once in each tracker. The day card tells you whether you are on
+leave a note or attach photos (a whiteboard sketch, a notebook page). Set the start date once in each tracker. The day card tells you whether you are on
 track or behind, and offers to shift the start date to match your pace. The home page lists
 today's session for every tracker you have opened in that browser.
 
 Progress is saved in the browser's local storage, per tracker. To move it to another device or
 browser, press **Export** in a tracker, then open the same tracker on the other device and press
-**Import**. Import replaces that browser's progress with the file's, after a confirmation.
+**Import**. Import replaces that browser's progress with the file's, after a confirmation. Photos are
+included in the export, so expect larger files once you attach some.
 
 Export files are named `<tracker>-progress-<date>-<time>.json`, so several exports can sit in one
 folder. Where the file goes depends on the platform:
