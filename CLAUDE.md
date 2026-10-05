@@ -41,7 +41,13 @@ icons/                      icon.svg is the source; the PNGs are rendered from i
 Curriculum edits go in `PLAN` (and `LESSONS` where present). Each week is
 `{ph, t, tell, p:[six day titles], ...}`. Day records are keyed `w{week}d{day}` (1-based)
 and hold `done`, `unaided`, `revisit`, `note`, plus per-tracker extras. `persisted()` strips
-transient fields (`view`, `open`, and in SQL `hint`/`sol`) before saving.
+transient fields (`view`, `open`, `hint`/`sol` in SQL, and `sol` in System Design, Kafka and PySpark)
+before saving.
+- System Design, Kafka and PySpark also have `const SOLUTIONS = [...]` after `LESSONS`: one array
+  per week of 6 HTML strings, one per day, shown by the **Solution** toggle on each day row (`.sol`
+  panel, `.day.sol-on`). Keep each entry readable in about two minutes; it is a reference answer
+  and pointers, not a second lesson. Entries are template literals, so no backticks or `${` inside
+  them (write `\${` or use quotes). DSA and SQL do not have this yet.
 
 ## Layout rules (phone vs desktop)
 
